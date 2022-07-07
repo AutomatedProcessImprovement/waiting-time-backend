@@ -1,0 +1,356 @@
+openapi: 3.0.3
+info:
+  title: Activity Transition Tool
+  description: The tool allows to identify activity transitions given an event log
+    and analyze its waiting times.
+  version: 1.0.0
+servers:
+- url: /
+paths:
+  /jobs:
+    post:
+      summary: Submit an event log for the analysis.
+      requestBody:
+        description: Event log's URL to analyze and a callback endpoint to send request
+          to when the job is finished.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiRequest'
+        required: true
+      responses:
+        "200":
+          description: Job submitted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+  /jobs/{id}:
+    get:
+      summary: Get a summary of the job by its ID.
+      parameters:
+      - name: id
+        in: path
+        description: Job's UUID that was provided in the POST response.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Job's information.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseError'
+components:
+  schemas:
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        result:
+          $ref: '#/components/schemas/JobResult'
+      example:
+        result:
+          num_transition_instances: 5
+          total_contention_wt: 3
+          total_batching_wt: 7
+          num_transitions: 5
+          total_extraneous_wt: 4
+          report:
+          - contention_wt: 7
+            wt_by_resource:
+            - contention_wt: 3
+              source_resource: 5
+              target_resource: 9
+              extraneous_wt: 1
+              total_freq: 6
+              case_freq: 9
+              batching_wt: 9
+              prioritization_wt: 6
+              unavailability_wt: 6
+              total_wt: 8
+            - contention_wt: 3
+              source_resource: 5
+              target_resource: 9
+              extraneous_wt: 1
+              total_freq: 6
+              case_freq: 9
+              batching_wt: 9
+              prioritization_wt: 6
+              unavailability_wt: 6
+              total_wt: 8
+            source_activity: source_activity
+            target_activity: target_activity
+            extraneous_wt: 4
+            total_freq: 1
+            case_freq: 7
+            batching_wt: 1
+            prioritization_wt: 6
+            unavailability_wt: 1
+            total_wt: 1
+          - contention_wt: 7
+            wt_by_resource:
+            - contention_wt: 3
+              source_resource: 5
+              target_resource: 9
+              extraneous_wt: 1
+              total_freq: 6
+              case_freq: 9
+              batching_wt: 9
+              prioritization_wt: 6
+              unavailability_wt: 6
+              total_wt: 8
+            - contention_wt: 3
+              source_resource: 5
+              target_resource: 9
+              extraneous_wt: 1
+              total_freq: 6
+              case_freq: 9
+              batching_wt: 9
+              prioritization_wt: 6
+              unavailability_wt: 6
+              total_wt: 8
+            source_activity: source_activity
+            target_activity: target_activity
+            extraneous_wt: 4
+            total_freq: 1
+            case_freq: 7
+            batching_wt: 1
+            prioritization_wt: 6
+            unavailability_wt: 1
+            total_wt: 1
+          num_activity_instances: 1
+          total_prioritization_wt: 9
+          total_unavailability_wt: 2
+          num_activities: 6
+          num_cases: 0
+          total_wt: 2
+        id: id
+        status: status
+    JobResult:
+      type: object
+      properties:
+        num_cases:
+          type: integer
+        num_activities:
+          type: integer
+        num_activity_instances:
+          type: integer
+        num_transitions:
+          type: integer
+        num_transition_instances:
+          type: integer
+        total_wt:
+          type: integer
+        total_batching_wt:
+          type: integer
+        total_prioritization_wt:
+          type: integer
+        total_contention_wt:
+          type: integer
+        total_unavailability_wt:
+          type: integer
+        total_extraneous_wt:
+          type: integer
+        report:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobResultReportItem'
+      example:
+        num_transition_instances: 5
+        total_contention_wt: 3
+        total_batching_wt: 7
+        num_transitions: 5
+        total_extraneous_wt: 4
+        report:
+        - contention_wt: 7
+          wt_by_resource:
+          - contention_wt: 3
+            source_resource: 5
+            target_resource: 9
+            extraneous_wt: 1
+            total_freq: 6
+            case_freq: 9
+            batching_wt: 9
+            prioritization_wt: 6
+            unavailability_wt: 6
+            total_wt: 8
+          - contention_wt: 3
+            source_resource: 5
+            target_resource: 9
+            extraneous_wt: 1
+            total_freq: 6
+            case_freq: 9
+            batching_wt: 9
+            prioritization_wt: 6
+            unavailability_wt: 6
+            total_wt: 8
+          source_activity: source_activity
+          target_activity: target_activity
+          extraneous_wt: 4
+          total_freq: 1
+          case_freq: 7
+          batching_wt: 1
+          prioritization_wt: 6
+          unavailability_wt: 1
+          total_wt: 1
+        - contention_wt: 7
+          wt_by_resource:
+          - contention_wt: 3
+            source_resource: 5
+            target_resource: 9
+            extraneous_wt: 1
+            total_freq: 6
+            case_freq: 9
+            batching_wt: 9
+            prioritization_wt: 6
+            unavailability_wt: 6
+            total_wt: 8
+          - contention_wt: 3
+            source_resource: 5
+            target_resource: 9
+            extraneous_wt: 1
+            total_freq: 6
+            case_freq: 9
+            batching_wt: 9
+            prioritization_wt: 6
+            unavailability_wt: 6
+            total_wt: 8
+          source_activity: source_activity
+          target_activity: target_activity
+          extraneous_wt: 4
+          total_freq: 1
+          case_freq: 7
+          batching_wt: 1
+          prioritization_wt: 6
+          unavailability_wt: 1
+          total_wt: 1
+        num_activity_instances: 1
+        total_prioritization_wt: 9
+        total_unavailability_wt: 2
+        num_activities: 6
+        num_cases: 0
+        total_wt: 2
+    JobResultReportItem:
+      type: object
+      properties:
+        source_activity:
+          type: string
+        target_activity:
+          type: string
+        case_freq:
+          type: integer
+        total_freq:
+          type: integer
+        total_wt:
+          type: integer
+        batching_wt:
+          type: integer
+        prioritization_wt:
+          type: integer
+        contention_wt:
+          type: integer
+        unavailability_wt:
+          type: integer
+        extraneous_wt:
+          type: integer
+        wt_by_resource:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobResultResourceItem'
+      example:
+        contention_wt: 7
+        wt_by_resource:
+        - contention_wt: 3
+          source_resource: 5
+          target_resource: 9
+          extraneous_wt: 1
+          total_freq: 6
+          case_freq: 9
+          batching_wt: 9
+          prioritization_wt: 6
+          unavailability_wt: 6
+          total_wt: 8
+        - contention_wt: 3
+          source_resource: 5
+          target_resource: 9
+          extraneous_wt: 1
+          total_freq: 6
+          case_freq: 9
+          batching_wt: 9
+          prioritization_wt: 6
+          unavailability_wt: 6
+          total_wt: 8
+        source_activity: source_activity
+        target_activity: target_activity
+        extraneous_wt: 4
+        total_freq: 1
+        case_freq: 7
+        batching_wt: 1
+        prioritization_wt: 6
+        unavailability_wt: 1
+        total_wt: 1
+    JobResultResourceItem:
+      type: object
+      properties:
+        source_resource:
+          type: string
+        target_resource:
+          type: string
+        case_freq:
+          type: integer
+        total_freq:
+          type: integer
+        total_wt:
+          type: integer
+        batching_wt:
+          type: integer
+        prioritization_wt:
+          type: integer
+        contention_wt:
+          type: integer
+        unavailability_wt:
+          type: integer
+        extraneous_wt:
+          type: integer
+      example:
+        contention_wt: 3
+        source_resource: source_resource
+        target_resource: target_resource
+        extraneous_wt: 1
+        total_freq: 6
+        case_freq: 9
+        batching_wt: 9
+        prioritization_wt: 6
+        unavailability_wt: 6
+        total_wt: 8
+    ApiResponseError:
+      type: object
+      properties:
+        error:
+          type: string
+    ApiRequest:
+      type: object
+      properties:
+        event_log:
+          type: string
+        callback_endpoint:
+          type: string
