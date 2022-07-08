@@ -12,12 +12,12 @@ import (
 func main() {
 	// Command line flags
 	port := flag.String("port", "8080", "Port to listen on")
-	sleep := flag.Int("sleep", 60, "Seconds for a worker to sleep if there is no pending jobs")
+	sleep := flag.Int("sleep", 5, "Seconds for a worker to sleep if there is no pending jobs")
 	flag.Parse()
 
 	// Configure the application
 	config := app.DefaultConfiguration()
-	config.WorkerSleepTime = time.Duration(*sleep) * time.Second
+	config.QueueSleepTime = time.Duration(*sleep) * time.Second
 
 	// Initialize the application
 	a, err := app.NewApplication(config)

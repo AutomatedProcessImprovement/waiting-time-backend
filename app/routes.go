@@ -58,5 +58,11 @@ func (app *Application) initializeRouter() {
 			Handler(handler)
 	}
 
+	router.
+		Name("Asset").
+		Methods("GET").
+		PathPrefix("/assets/").
+		Handler(ServeStatic(app))
+
 	app.router = router
 }

@@ -3,8 +3,7 @@ package model
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"log"
-	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -23,16 +22,17 @@ type Job struct {
 	Status           JobStatus  `json:"status,omitempty"`
 	Error            string     `json:"error,omitempty"`
 	Result           *JobResult `json:"result,omitempty"`
-	ReportCSV        *URL       `json:"report_csv,string,omitempty"`
-	CallbackEndpoint *URL       `json:"callback_endpoint,string,omitempty"`
-	EventLog         *URL       `json:"event_log,string,omitempty"`
+	ReportCSV        *URL       `json:"report_csv,omitempty"`
+	CallbackEndpoint *URL       `json:"callback_endpoint,omitempty"`
+	EventLog         *URL       `json:"event_log,omitempty"`
 	CreatedAt        time.Time  `json:"created_at,omitempty"`
 	CompletedAt      *time.Time `json:"finished_at,omitempty"`
 
 	lock sync.Mutex
+	Dir  string `json:"-"`
 }
 
-func NewJob(eventLog *URL, callback *URL) (*Job, error) {
+func NewJob(eventLog *URL, callback *URL, basedir string) (*Job, error) {
 	id, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
@@ -44,6 +44,7 @@ func NewJob(eventLog *URL, callback *URL) (*Job, error) {
 		CallbackEndpoint: callback,
 		EventLog:         eventLog,
 		CreatedAt:        time.Now(),
+		Dir:              strings.Join([]string{basedir, id.String()}, "/"),
 	}, nil
 }
 
@@ -67,40 +68,37 @@ func (j *Job) Validate() error {
 	return nil
 }
 
-func (j *Job) Run(logger *log.Logger) {
-	var err error
-
-	if j.Status != JobStatusPending {
-		err = fmt.Errorf("job is not pending")
-		logger.Printf("Job %s failed; %s", j.ID, err.Error())
-		j.Error = err.Error()
-		return
-	}
-
-	// pre-work
-	j.lock.Lock()
-	j.Status = JobStatusRunning
-	j.lock.Unlock()
-
-	logger.Printf("Job %s started", j.ID)
-
-	// useful work
-	jobDuration := time.Duration(rand.Intn(60)+60) * time.Second
-	time.Sleep(jobDuration)
-
-	// post-work
+func (j *Job) SetStatus(status JobStatus) {
 	j.lock.Lock()
 	defer j.lock.Unlock()
 
-	now := time.Now()
-	j.CompletedAt = &now
+	j.Status = status
+}
 
-	if err == nil {
-		logger.Printf("Job %s completed", j.ID)
-		j.Status = JobStatusCompleted
-	} else {
-		logger.Printf("Job %s failed; %s", j.ID, err.Error())
-		j.Status = JobStatusFailed
-		j.Error = err.Error()
-	}
+func (j *Job) SetError(err error) {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+
+	j.Error = err.Error()
+}
+
+func (j *Job) SetResult(result *JobResult) {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+
+	j.Result = result
+}
+
+func (j *Job) SetReportCSV(url *URL) {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+
+	j.ReportCSV = url
+}
+
+func (j *Job) SetCompletedAt(t time.Time) {
+	j.lock.Lock()
+	defer j.lock.Unlock()
+
+	j.CompletedAt = &t
 }

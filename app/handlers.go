@@ -25,11 +25,11 @@ func GetJobByID(app *Application) http.HandlerFunc {
 
 		if job == nil {
 			apiResponse.Error_ = &model.ApiResponseError{Message: "job not found"}
-			reply(w, http.StatusNotFound, apiResponse, app.appLogger)
+			reply(w, http.StatusNotFound, apiResponse, app.logger)
 			return
 		}
 
-		reply(w, http.StatusOK, apiResponse, app.appLogger)
+		reply(w, http.StatusOK, apiResponse, app.logger)
 	}
 }
 
@@ -40,31 +40,31 @@ func PostJobs(app *Application) http.HandlerFunc {
 
 		if err := json.NewDecoder(r.Body).Decode(&apiRequest); err != nil {
 			message := fmt.Sprintf("invalid request body; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.appLogger)
+			reply(w, http.StatusBadRequest, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.logger)
 			return
 		}
 
-		job, err := model.NewJob(apiRequest.EventLog, apiRequest.CallbackEndpoint)
+		job, err := model.NewJob(apiRequest.EventLog, apiRequest.CallbackEndpoint, app.config.ResultsDir)
 		if err != nil {
 			message := fmt.Sprintf("cannot create a job; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.appLogger)
+			reply(w, http.StatusBadRequest, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.logger)
 			return
 		}
 
 		if err = job.Validate(); err != nil {
 			message := fmt.Sprintf("invalid job; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.appLogger)
+			reply(w, http.StatusBadRequest, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.logger)
 			return
 		}
 
 		if err = app.AddJob(job); err != nil {
 			message := fmt.Sprintf("failed to add a job to the queue; %s", err)
-			reply(w, http.StatusInternalServerError, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.appLogger)
+			reply(w, http.StatusInternalServerError, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.logger)
 			return
 		}
 
 		apiResponse.Job = job
-		reply(w, http.StatusCreated, apiResponse, app.appLogger)
+		reply(w, http.StatusCreated, apiResponse, app.logger)
 	}
 }
 
@@ -74,7 +74,13 @@ func GetJobs(app *Application) http.HandlerFunc {
 
 		apiResponse.Jobs = app.queue.Jobs
 
-		reply(w, http.StatusOK, apiResponse, app.appLogger)
+		reply(w, http.StatusOK, apiResponse, app.logger)
+	}
+}
+
+func ServeStatic(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, r.URL.Path[1:])
 	}
 }
 
