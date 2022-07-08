@@ -1,4 +1,4 @@
-package app
+package model
 
 type JobResultResourceItem struct {
 	SourceResource   string `json:"source_resource,omitempty"`

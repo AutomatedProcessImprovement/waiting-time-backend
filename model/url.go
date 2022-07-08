@@ -1,4 +1,4 @@
-package app
+package model
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 )
 
 type URL struct {
-	url *url.URL
+	URL *url.URL
 }
 
 func (u *URL) String() string {
@@ -14,7 +14,7 @@ func (u *URL) String() string {
 		return ""
 	}
 
-	return u.url.String()
+	return u.URL.String()
 }
 
 func (u *URL) UnmarshalJSON(data []byte) error {
@@ -25,7 +25,7 @@ func (u *URL) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	u.url, err = url.Parse(s)
+	u.URL, err = url.Parse(s)
 	if err != nil {
 		return err
 	}
@@ -38,5 +38,5 @@ func (u *URL) MarshalJSON() ([]byte, error) {
 		return []byte("null"), nil
 	}
 
-	return json.Marshal(u.url.String())
+	return json.Marshal(u.URL.String())
 }

@@ -1,4 +1,4 @@
-package app
+package model
 
 type JobResult struct {
 	NumCases               uint64                `json:"num_cases,omitempty"`

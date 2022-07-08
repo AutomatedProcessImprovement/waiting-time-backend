@@ -1,6 +1,7 @@
 FROM golang:1.18 AS wt_build
 WORKDIR /go/src
 COPY app ./app
+COPY model ./model
 COPY main.go .
 COPY go.mod .
 COPY go.sum .

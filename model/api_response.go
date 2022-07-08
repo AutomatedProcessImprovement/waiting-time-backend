@@ -1,4 +1,4 @@
-package app
+package model
 
 type ApiResponse struct {
 	Job    *Job              `json:"job,omitempty"`

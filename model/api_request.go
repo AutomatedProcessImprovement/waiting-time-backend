@@ -1,4 +1,4 @@
-package app
+package model
 
 import (
 	"encoding/json"
@@ -23,14 +23,14 @@ func (r *ApiRequest) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	r.EventLog = &URL{url: u}
+	r.EventLog = &URL{URL: u}
 
 	callbackEndpoint := jsonData["callback_endpoint"]
 	u, err = url.Parse(callbackEndpoint)
 	if err != nil {
 		return err
 	}
-	r.CallbackEndpoint = &URL{url: u}
+	r.CallbackEndpoint = &URL{URL: u}
 
 	return nil
 }

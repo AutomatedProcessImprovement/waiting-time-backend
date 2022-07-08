@@ -1,4 +1,4 @@
-package app
+package model
 
 type JobResultReportItem struct {
 	SourceActivity   string                  `json:"source_activity,omitempty"`
