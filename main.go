@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/app"
 	"log"
 	"net/http"
@@ -11,13 +10,16 @@ import (
 
 func main() {
 	// Command line flags
-	port := flag.String("port", "8080", "Port to listen on")
+	port := flag.Uint("port", 8080, "Port to listen on")
+	host := flag.String("host", "localhost", "Host to listen on")
 	sleep := flag.Int("sleep", 5, "Seconds for a worker to sleep if there is no pending jobs")
 	flag.Parse()
 
 	// Configure the application
 	config := app.DefaultConfiguration()
 	config.QueueSleepTime = time.Duration(*sleep) * time.Second
+	config.Host = *host
+	config.Port = *port
 
 	// Initialize the application
 	a, err := app.NewApplication(config)
@@ -31,7 +33,7 @@ func main() {
 	go a.ProcessQueue()
 
 	// Start the HTTP server
-	addr := fmt.Sprintf(":%s", *port)
+	addr := a.Addr()
 	router := a.Router()
 	log.Printf("Server started at %s", addr)
 	log.Fatal(http.ListenAndServe(addr, router))

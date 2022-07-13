@@ -3,6 +3,8 @@ package app
 import "time"
 
 type Configuration struct {
+	Host           string
+	Port           uint
 	AssetsDir      string
 	ResultsDir     string
 	QueueSleepTime time.Duration
