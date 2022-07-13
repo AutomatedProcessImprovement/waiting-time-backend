@@ -37,4 +37,5 @@ jobs:
       - name: Upload builds
         uses: actions/upload-artifact@v3
         with:
-          path: build/*
+          name: build
+          path: build
