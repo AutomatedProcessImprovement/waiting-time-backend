@@ -49,7 +49,7 @@ func (app *Application) initializeRouter() {
 	for _, route := range routes {
 		var handler http.Handler
 		handler = route.HandlerFunc
-		handler = Logger(app, handler, route.Name)
+		handler = EnableCORS(Logger(app, handler, route.Name))
 
 		router.
 			Methods(route.Method).
