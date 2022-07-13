@@ -52,7 +52,7 @@ func (app *Application) initializeRouter() {
 		handler = EnableCORS(Logger(app, handler, route.Name))
 
 		router.
-			Methods(route.Method).
+			Methods(route.Method, "OPTIONS").
 			Path(route.Pattern).
 			Name(route.Name).
 			Handler(handler)
