@@ -129,6 +129,11 @@ func (app *Application) processJob(job *model.Job) {
 		ctx, cancel := context.WithTimeout(context.Background(), app.config.JobTimeout)
 		defer cancel()
 
+		host := os.Getenv("WEBAPP_HOST")
+		if len(host) == 0 {
+			host = app.config.Host
+		}
+
 		jobErrorChan := make(chan error)
 		go func() {
 			jobErrorChan <- app.runAnalysis(ctx, eventLogName, job.Dir, job.ID)
@@ -153,7 +158,7 @@ func (app *Application) processJob(job *model.Job) {
 				reportName := strings.TrimSuffix(eventLogName, ext) + "_handoff" + ext
 				reportURL, err := url.Parse(
 					fmt.Sprintf("http://%s:%d/assets/results/%s/%s",
-						app.config.Host, app.config.Port, job.ID, reportName))
+						host, app.config.Port, job.ID, reportName))
 				if err != nil {
 					app.logger.Printf("error creating report URL: %s", err.Error())
 					job.SetError(err)

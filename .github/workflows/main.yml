@@ -54,7 +54,7 @@ jobs:
           tags: ${{ env.DOCKERHUB_REPO }}:latest
           file: Dockerfile
           context: .
-          platforms: linux/amd64,darwin/amd64,darwin/arm64,windows/amd64
+          platforms: linux/amd64,linux/arm64
 
       # Artifacts
 
