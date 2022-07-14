@@ -1,19 +1,9 @@
 #!/usr/bin/env bash
 
 remote_host=193.40.11.233
-deployments_dir=/home/ihar/deployments
-destination_dir=$deployments_dir/waiting-time-backend
-payload_dir=build/linux-amd64
+results_dir=/home/ihar/deployments/waiting-time-backend/results
 
-#rsync -avz $payload_dir/ $remote_host:$destination_dir/
-#
-#rsync -avz $service_file $remote_host:$destination_dir/
-#ssh $remote_host sudo -S mv $destination_dir/$service_file /etc/systemd/system/
-#
-#ssh $remote_host sudo -S systemctl daemon-reload
-#ssh $remote_host sudo -S systemctl restart $service_file
-
-rsync -avz caddy $remote_host:$deployments_dir/
-ssh $remote_host chmod +x $deployments_dir/caddy/caddy_linux_amd64
-
-# TODO: finish publishing the web service and exposing it to the internet
+ssh $remote_host docker pull nokal/waiting-time-backend
+ssh $remote_host docker stop waiting-time-backend
+ssh $remote_host docker rm waiting-time-backend
+ssh $remote_host docker run -d -p 80:8080 -e WEBAPP_HOST=$remote_host -v $results_dir:/srv/webapp/assets/results --name waiting-time-backend nokal/waiting-time-backend

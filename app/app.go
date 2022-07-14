@@ -158,7 +158,7 @@ func (app *Application) processJob(job *model.Job) {
 				reportName := strings.TrimSuffix(eventLogName, ext) + "_handoff" + ext
 				reportURL, err := url.Parse(
 					fmt.Sprintf("http://%s/assets/results/%s/%s",
-						host, app.config.Port, job.ID, reportName))
+						host, job.ID, reportName))
 				if err != nil {
 					app.logger.Printf("error creating report URL: %s", err.Error())
 					job.SetError(err)
