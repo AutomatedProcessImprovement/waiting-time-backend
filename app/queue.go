@@ -19,6 +19,10 @@ func NewQueue() *Queue {
 
 // Add adds a job to the queue if it's not yet present there.
 func (q *Queue) Add(job *model.Job) error {
+	if job == nil {
+		return fmt.Errorf("job is nil")
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -34,6 +38,10 @@ func (q *Queue) Add(job *model.Job) error {
 
 // Remove removes a job from the queue if it finds one.
 func (q *Queue) Remove(job *model.Job) {
+	if job == nil {
+		return
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -48,6 +56,10 @@ func (q *Queue) Remove(job *model.Job) {
 // FindByID finds a job by its ID.
 func (q *Queue) FindByID(id string) *model.Job {
 	for _, j := range q.Jobs {
+		if j == nil {
+			continue
+		}
+
 		if j.ID == id {
 			return j
 		}
@@ -60,6 +72,10 @@ func (q *Queue) Next() *model.Job {
 	q.sort()
 
 	for _, j := range q.Jobs {
+		if j == nil {
+			continue
+		}
+
 		if j.Status == model.JobStatusPending {
 			return j
 		}
