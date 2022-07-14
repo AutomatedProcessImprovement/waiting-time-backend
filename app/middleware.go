@@ -11,7 +11,7 @@ func Logger(app *Application, inner http.Handler, name string) http.Handler {
 
 		inner.ServeHTTP(w, r)
 
-		app.webLogger.Printf(
+		app.logger.Printf(
 			"%s %s %s %s",
 			r.Method,
 			r.RequestURI,

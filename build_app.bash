@@ -17,6 +17,11 @@ do
 		output_name+='.exe'
 	fi
 
+	# clean build_dir if it exists
+	if [ -d "$build_dir" ]; then
+    rm -rf "$build_dir"
+  fi
+
 	# providing static assets for the server
 	mkdir -p "$build_dir/assets"
 	cp -r assets/samples "$build_dir/assets"
@@ -36,7 +41,4 @@ do
       tar -czf "$dir_name.tar.gz" "$dir_name"
     fi
   )
-
-  # remove the build folder
-  rm -rf "$build_dir"
 done

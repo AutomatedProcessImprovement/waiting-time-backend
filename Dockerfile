@@ -1,19 +1,12 @@
-FROM golang:1.18 AS wt_build
-WORKDIR /go/src
-COPY app ./app
-COPY model ./model
-COPY main.go .
-COPY go.mod .
-COPY go.sum .
+FROM nokal/process-waste
 
-ARG MOD_NAME=github.com/AutomatedProcessImprovement/waiting-time-backend
-ARG OUT_BIN=wt_server
+RUN apt-get update && apt-get install -y \
+    curl \
+    vim
 
-ENV CGO_ENABLED=0
-RUN go get $MOD_NAME
-RUN go build -a -installsuffix cgo -o $OUT_BIN $MOD_NAME
+WORKDIR /srv/webapp
+ADD build/linux-amd64/ .
+ADD run_analysis.bash .
 
-FROM scratch AS wt_runtime
-COPY --from=wt_build /go/src/$OUT_BIN ./
-EXPOSE 8080/tcp
-ENTRYPOINT ["./$OUT_BIN"]
+EXPOSE 8080
+CMD ["/srv/webapp/waiting-time-backend", "-host", "localhost", "-port", "8080"]

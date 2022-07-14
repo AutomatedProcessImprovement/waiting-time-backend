@@ -13,6 +13,7 @@ func main() {
 	port := flag.Uint("port", 8080, "Port to listen on")
 	host := flag.String("host", "localhost", "Host to listen on")
 	sleep := flag.Int("sleep", 5, "Seconds for a worker to sleep if there is no pending jobs")
+	dev := flag.Bool("dev", false, "Run in development mode")
 	flag.Parse()
 
 	// Configure the application
@@ -20,6 +21,7 @@ func main() {
 	config.QueueSleepTime = time.Duration(*sleep) * time.Second
 	config.Host = *host
 	config.Port = *port
+	config.DevelopmentMode = *dev
 
 	// Initialize the application
 	a, err := app.NewApplication(config)
@@ -36,5 +38,6 @@ func main() {
 	addr := a.Addr()
 	router := a.Router()
 	log.Printf("Server started at %s", addr)
+	log.Printf("Development mode: %v", config.DevelopmentMode)
 	log.Fatal(http.ListenAndServe(addr, router))
 }

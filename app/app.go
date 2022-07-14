@@ -2,36 +2,29 @@ package app
 
 import (
 	"context"
-	"encoding/gob"
 	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/model"
 	"github.com/gorilla/mux"
-	"io"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
 	"time"
 )
 
 type Application struct {
-	router        *mux.Router
-	queue         *Queue
-	config        *Configuration
-	docker        *DockerWorker
-	logger        *log.Logger
-	loggerFile    *os.File
-	webLogger     *log.Logger
-	webLoggerFile *os.File
+	router *mux.Router
+	queue  *Queue
+	config *Configuration
+	logger *log.Logger
 }
 
 func NewApplication(config *Configuration) (*Application, error) {
 	app := &Application{
 		config: config,
 		queue:  NewQueue(),
-		docker: DefaultDockerWorker(),
 	}
 
 	err := app.LoadQueue()
@@ -44,19 +37,7 @@ func NewApplication(config *Configuration) (*Application, error) {
 
 	app.initializeRouter()
 
-	appFile, err := os.OpenFile(config.AppLogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-	app.loggerFile = appFile
-	app.logger = log.New(appFile, "", log.Ldate|log.Ltime)
-
-	requestsFile, err := os.OpenFile(config.WebLogPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		return nil, err
-	}
-	app.webLoggerFile = requestsFile
-	app.webLogger = log.New(requestsFile, "", log.Ldate|log.Ltime)
+	app.logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
 	if err := mkdir(config.ResultsDir); err != nil {
 		return nil, err
@@ -66,13 +47,10 @@ func NewApplication(config *Configuration) (*Application, error) {
 }
 
 func (app *Application) Addr() string {
-	return fmt.Sprintf("%s:%d", app.config.Host, app.config.Port)
+	return fmt.Sprintf("0.0.0.0:%d", app.config.Port)
 }
 
 func (app *Application) Close() {
-	if err := app.loggerFile.Close(); err != nil {
-		app.logger.Printf("error closing file: %s", err.Error())
-	}
 }
 
 func (app *Application) Router() *mux.Router {
@@ -153,7 +131,7 @@ func (app *Application) processJob(job *model.Job) {
 
 		jobErrorChan := make(chan error)
 		go func() {
-			jobErrorChan <- app.runAnalysis(ctx, eventLogName, job.Dir)
+			jobErrorChan <- app.runAnalysis(ctx, eventLogName, job.Dir, job.ID)
 		}()
 
 		select {
@@ -191,116 +169,23 @@ func (app *Application) processJob(job *model.Job) {
 	// TODO: compose JobResult
 }
 
-func (app *Application) runAnalysis(ctx context.Context, eventLogPath, hostOutDir string) error {
-	const containerDir = "/usr/src/app/result"
-	logPathInContainer := fmt.Sprintf("%s/%s", containerDir, eventLogPath)
-
-	hostOutDir, err := abspath(hostOutDir)
+func (app *Application) runAnalysis(ctx context.Context, eventLogName, jobDir, jobID string) error {
+	jobDir, err := abspath(jobDir)
 	if err != nil {
 		return err
 	}
 
-	cmd := app.composeDockerCmd(hostOutDir, containerDir, logPathInContainer)
-
-	out, err := app.docker.Run(ctx, app.logger, cmd)
-
-	if err != nil {
-		return err
+	eventLogPath := path.Join(jobDir, eventLogName)
+	scriptName := "run_analysis.bash"
+	if app.config.DevelopmentMode {
+		scriptName = "run_analysis_dev.bash"
 	}
+	args := fmt.Sprintf("bash %s %s %s", scriptName, eventLogPath, jobDir)
 
+	out, err := exec.CommandContext(ctx, "sh", "-c", args).Output()
 	if len(out) > 0 {
-		app.logger.Printf("Docker output: %s", out)
+		app.logger.Printf("Job %s output: %s", jobID, out)
 	}
 
-	return nil
-}
-
-func (app *Application) composeDockerCmd(hostOutDir string, containerDir string, logPathInContainer string) string {
-	cmd := fmt.Sprintf("docker run --rm --name %s", app.docker.Container)
-
-	if app.docker.WorkDir != "" {
-		cmd += fmt.Sprintf(" -w %s", app.docker.WorkDir)
-	}
-
-	if len(app.docker.Env) > 0 {
-		cmd += " -e " + strings.Join(app.docker.Env, " -e ")
-	}
-
-	cmd += fmt.Sprintf(" -v %s:%s", hostOutDir, containerDir)
-
-	cmd += fmt.Sprintf(" %s", app.docker.Image)
-
-	cmd += fmt.Sprintf(" bash run_analysis.sh %s %s", logPathInContainer, containerDir)
-	return cmd
-}
-
-func dumpGob(path string, data interface{}, logger *log.Logger) error {
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			logger.Printf("error closing file: %s", err.Error())
-		}
-	}()
-
-	return gob.NewEncoder(f).Encode(data)
-}
-
-func readGob(path string, data interface{}, logger *log.Logger) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			logger.Printf("error closing file: %s", err.Error())
-		}
-	}()
-
-	return gob.NewDecoder(f).Decode(data)
-}
-
-func mkdir(path string) error {
-	if _, err := os.Open(path); os.IsNotExist(err) {
-		return os.MkdirAll(path, 0777)
-	}
-	return nil
-}
-
-func abspath(p string) (string, error) {
-	if !path.IsAbs(p) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-		p = path.Join(cwd, p)
-	}
-	return p, nil
-}
-
-func download(url string, path string, logger *log.Logger) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			logger.Printf("error closing response body: %s", err.Error())
-		}
-	}()
-
-	out, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := out.Close(); err != nil {
-			logger.Printf("error closing file: %s", err.Error())
-		}
-	}()
-
-	_, err = io.Copy(out, resp.Body)
 	return err
 }
