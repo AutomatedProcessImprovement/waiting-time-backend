@@ -19,8 +19,8 @@ func DefaultConfiguration() *Configuration {
 		AssetsDir:      "assets",
 		QueueSleepTime: time.Second * 60,
 		JobTimeout:     time.Hour * 4,
-		LogPath:        "app.log",
-		QueuePath:      "queue.gob",
+		LogPath:        "assets/app.log",
+		QueuePath:      "assets/queue.gob",
 		ResultsDir:     "assets/results",
 	}
 }
