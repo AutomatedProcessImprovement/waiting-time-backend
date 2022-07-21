@@ -1,0 +1,338 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "http"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "description": "The tool allows to identify activity transitions given an event log and analyze its waiting times.",
+    "title": "Waiting Time Analysis Backend API",
+    "contact": {
+      "name": "Ihar Suvorau",
+      "email": "ihar.suvorau@ut.ee"
+    },
+    "version": "1.0.0"
+  },
+  "host": "193.40.11.233",
+  "basePath": "/",
+  "paths": {
+    "/jobs": {
+      "get": {
+        "description": "List all jobs",
+        "operationId": "listJobs",
+        "responses": {
+          "default": {
+            "$ref": "#/responses/ApiResponse"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ApiResponseError": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "x-go-name": "Message"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "Job": {
+      "type": "object",
+      "title": "Job represents a job to be executed.",
+      "properties": {
+        "callback_endpoint": {
+          "$ref": "#/definitions/URL"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "CreatedAt"
+        },
+        "error": {
+          "type": "string",
+          "x-go-name": "Error"
+        },
+        "event_log": {
+          "$ref": "#/definitions/URL"
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "CompletedAt"
+        },
+        "id": {
+          "type": "string",
+          "x-go-name": "ID"
+        },
+        "report_csv": {
+          "$ref": "#/definitions/URL"
+        },
+        "result": {
+          "$ref": "#/definitions/JobResult"
+        },
+        "status": {
+          "$ref": "#/definitions/JobStatus"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "JobCteImpact": {
+      "type": "object",
+      "title": "JobCteImpact represents CTE impact of waiting times on the process level.",
+      "properties": {
+        "batching_impact": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "BatchingImpact"
+        },
+        "contention_impact": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "ContentionImpact"
+        },
+        "extraneous_impact": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "ExtraneousImpact"
+        },
+        "prioritization_impact": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "PrioritizationImpact"
+        },
+        "unavailability_impact": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "UnavailabilityImpact"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "JobResult": {
+      "description": "JobResult is a result of a job's execution which contains a summary of the transitions analysis report, a report\nitself and CTE impact of waiting times on the process level and on a transition level.",
+      "type": "object",
+      "properties": {
+        "cte_impact": {
+          "$ref": "#/definitions/JobCteImpact"
+        },
+        "num_activities": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "NumActivities"
+        },
+        "num_activity_instances": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "NumActivityInstances"
+        },
+        "num_cases": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "NumCases"
+        },
+        "num_transition_instances": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "NumTransitionInstances"
+        },
+        "num_transitions": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "NumTransitions"
+        },
+        "report": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JobResultReportItem"
+          },
+          "x-go-name": "Report"
+        },
+        "total_batching_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalBatchingWt"
+        },
+        "total_contention_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalContentionWt"
+        },
+        "total_extraneous_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalExtraneousWt"
+        },
+        "total_prioritization_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalPrioritizationWt"
+        },
+        "total_unavailability_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalUnavailabilityWt"
+        },
+        "total_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalWt"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "JobResultReportItem": {
+      "type": "object",
+      "properties": {
+        "batching_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "BatchingWt"
+        },
+        "case_freq": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "CaseFreq"
+        },
+        "contention_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "ContentionWt"
+        },
+        "extraneous_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "ExtraneousWt"
+        },
+        "prioritization_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "PrioritizationWt"
+        },
+        "source_activity": {
+          "type": "string",
+          "x-go-name": "SourceActivity"
+        },
+        "target_activity": {
+          "type": "string",
+          "x-go-name": "TargetActivity"
+        },
+        "total_freq": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalFreq"
+        },
+        "total_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalWt"
+        },
+        "unavailability_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "UnavailabilityWt"
+        },
+        "wt_by_resource": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JobResultResourceItem"
+          },
+          "x-go-name": "WtByResource"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "JobResultResourceItem": {
+      "type": "object",
+      "properties": {
+        "batching_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "BatchingWt"
+        },
+        "case_freq": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "CaseFreq"
+        },
+        "contention_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "ContentionWt"
+        },
+        "extraneous_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "ExtraneousWt"
+        },
+        "prioritization_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "PrioritizationWt"
+        },
+        "source_resource": {
+          "type": "string",
+          "x-go-name": "SourceResource"
+        },
+        "target_resource": {
+          "type": "string",
+          "x-go-name": "TargetResource"
+        },
+        "total_freq": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalFreq"
+        },
+        "total_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalWt"
+        },
+        "unavailability_wt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "UnavailabilityWt"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "JobStatus": {
+      "type": "string",
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "URL": {
+      "type": "object",
+      "properties": {
+        "URL": {
+          "$ref": "#/definitions/URL"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    }
+  },
+  "responses": {
+    "ApiResponse": {
+      "description": "",
+      "schema": {
+        "$ref": "#/definitions/ApiResponseError"
+      },
+      "headers": {
+        "error": {},
+        "job": {},
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Job"
+          }
+        }
+      }
+    }
+  }
+}

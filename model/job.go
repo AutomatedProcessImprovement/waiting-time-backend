@@ -17,6 +17,9 @@ var (
 	JobStatusFailed    = JobStatus("failed")
 )
 
+// Job represents a job to be executed.
+//
+// swagger:model Job
 type Job struct {
 	ID               string     `json:"id,omitempty"`
 	Status           JobStatus  `json:"status,omitempty"`

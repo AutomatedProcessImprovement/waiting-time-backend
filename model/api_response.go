@@ -1,5 +1,6 @@
 package model
 
+// swagger:response
 type ApiResponse struct {
 	Job    *Job              `json:"job,omitempty"`
 	Jobs   []*Job            `json:"jobs,omitempty"`

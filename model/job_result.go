@@ -1,5 +1,9 @@
 package model
 
+// JobResult is a result of a job's execution which contains a summary of the transitions analysis report, a report
+// itself and CTE impact of waiting times on the process level and on a transition level.
+//
+// swagger:model
 type JobResult struct {
 	NumCases               float64                `json:"num_cases"`
 	NumActivities          float64                `json:"num_activities"`

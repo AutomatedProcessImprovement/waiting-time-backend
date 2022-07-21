@@ -1,3 +1,20 @@
+// Package app Waiting Time Analysis Backend API
+//
+// The tool allows to identify activity transitions given an event log and analyze its waiting times.
+//
+// Schemes: http
+// Host: 193.40.11.233
+// BasePath: /
+// Version: 1.0.0
+// Contact: Ihar Suvorau<ihar.suvorau@ut.ee>
+//
+// Consumes:
+//     - application/json
+//
+// Produces:
+// 		- application/json
+//
+// swagger:meta
 package app
 
 import (

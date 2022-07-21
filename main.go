@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+//go:generate swagger generate spec -o app/spec/swagger.json
+
 func main() {
 	// Command line flags
 	port := flag.Uint("port", 8080, "Port to listen on")

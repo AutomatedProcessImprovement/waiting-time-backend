@@ -7,10 +7,30 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+
+	_ "embed"
 )
 
 func Index(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello World!")
+	_, _ = fmt.Fprintf(w, "Hello World!")
+}
+
+func StaticAssets(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		app.logger.Printf("Serving %s", r.URL.Path[1:])
+		http.ServeFile(w, r, r.URL.Path[1:])
+	}
+}
+
+//go:embed spec/swagger.json
+var swaggerJSON string
+
+func GetSwaggerJSON(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintf(w, swaggerJSON)
+	}
 }
 
 func GetJobByID(app *Application) http.HandlerFunc {
@@ -68,6 +88,12 @@ func PostJobs(app *Application) http.HandlerFunc {
 	}
 }
 
+// swagger:route GET /jobs listJobs
+//
+// List all jobs
+//
+// Responses:
+//   default: ApiResponse
 func GetJobs(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var apiResponse model.ApiResponse
@@ -75,12 +101,6 @@ func GetJobs(app *Application) http.HandlerFunc {
 		apiResponse.Jobs = app.queue.Jobs
 
 		reply(w, http.StatusOK, apiResponse, app.logger)
-	}
-}
-
-func ServeStatic(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, r.URL.Path[1:])
 	}
 }
 
