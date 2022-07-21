@@ -1,4 +1,4 @@
-FROM nokal/process-waste
+FROM nokal/waiting-time-analysis
 
 RUN apt-get update && apt-get install -y \
     curl \

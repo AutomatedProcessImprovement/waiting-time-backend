@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/gob"
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -35,6 +36,20 @@ func readGob(path string, data interface{}, logger *log.Logger) error {
 	}()
 
 	return gob.NewDecoder(f).Decode(data)
+}
+
+func readJSON(path string, data interface{}, logger *log.Logger) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			logger.Printf("error closing file: %s", err.Error())
+		}
+	}()
+
+	return json.NewDecoder(f).Decode(data)
 }
 
 func mkdir(path string) error {

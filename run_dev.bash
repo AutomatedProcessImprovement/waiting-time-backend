@@ -2,4 +2,4 @@
 
 bash build_app.bash
 bash build_docker.bash
-bash run_docker.bash
+bash run_docker_dev.bash

@@ -53,7 +53,7 @@ func (app *Application) Addr() string {
 func (app *Application) Close() {
 }
 
-func (app *Application) Router() *mux.Router {
+func (app *Application) GetRouter() *mux.Router {
 	return app.router
 }
 
@@ -139,6 +139,8 @@ func (app *Application) processJob(job *model.Job) {
 			jobErrorChan <- app.runAnalysis(ctx, eventLogName, job.Dir, job.ID)
 		}()
 
+		const reportSuffixCSV = "_transitions_report.csv"
+
 		select {
 		case <-ctx.Done():
 			app.logger.Printf("Job %s timed out", job.ID)
@@ -155,7 +157,7 @@ func (app *Application) processJob(job *model.Job) {
 
 				// assign report CSV
 				ext := path.Ext(eventLogName)
-				reportName := strings.TrimSuffix(eventLogName, ext) + "_handoff" + ext
+				reportName := strings.TrimSuffix(eventLogName, ext) + reportSuffixCSV
 				reportURL, err := url.Parse(
 					fmt.Sprintf("http://%s/assets/results/%s/%s",
 						host, job.ID, reportName))
@@ -164,14 +166,55 @@ func (app *Application) processJob(job *model.Job) {
 					job.SetError(err)
 				}
 				job.SetReportCSV(&model.URL{URL: reportURL})
+
+				// assign result
+				result, err := app.prepareJobResult(job)
+				if err != nil {
+					app.logger.Printf("error preparing result: %s", err.Error())
+					job.SetError(err)
+				} else {
+					job.SetResult(result)
+				}
 			}
 		}
 	}
 
 	// post-work
 	job.SetCompletedAt(time.Now())
+}
 
-	// TODO: compose JobResult
+func (app *Application) prepareJobResult(job *model.Job) (*model.JobResult, error) {
+	if job.EventLog == nil {
+		return nil, fmt.Errorf("job has no event log")
+	}
+
+	const (
+		reportSuffixJSON = "_transitions_report.json"
+		cteSuffix        = "_process_cte_impact.json"
+	)
+
+	eventLogName := path.Base(job.EventLog.String())
+	eventLogExt := path.Ext(eventLogName)
+
+	// prepare result
+	resultName := strings.TrimSuffix(eventLogName, eventLogExt) + reportSuffixJSON
+	resultPath := path.Join(job.Dir, resultName)
+	result := model.JobResult{}
+	if err := readJSON(resultPath, &result, app.logger); err != nil {
+		return nil, fmt.Errorf("error reading result: %s", err.Error())
+	}
+
+	// assign CTE impact
+	cteName := strings.TrimSuffix(eventLogName, eventLogExt) + cteSuffix
+	ctePath := path.Join(job.Dir, cteName)
+	cteImpact := model.JobCteImpact{}
+	if err := readJSON(ctePath, &cteImpact, app.logger); err != nil {
+		return nil, fmt.Errorf("error reading CTE impact: %s", err.Error())
+	} else {
+		result.CTEImpact = &cteImpact
+	}
+
+	return &result, nil
 }
 
 func (app *Application) runAnalysis(ctx context.Context, eventLogName, jobDir, jobID string) error {

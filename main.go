@@ -36,7 +36,7 @@ func main() {
 
 	// Start the HTTP server
 	addr := a.Addr()
-	router := a.Router()
+	router := a.GetRouter()
 	log.Printf("Server started at %s", addr)
 	log.Printf("Development mode: %v", config.DevelopmentMode)
 	log.Fatal(http.ListenAndServe(addr, router))

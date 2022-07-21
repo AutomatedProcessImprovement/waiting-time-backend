@@ -1,16 +1,17 @@
 package model
 
 type JobResult struct {
-	NumCases               uint64                `json:"num_cases,omitempty"`
-	NumActivities          uint64                `json:"num_activities,omitempty"`
-	NumActivityInstances   uint64                `json:"num_activity_instances,omitempty"`
-	NumTransitions         uint64                `json:"num_transitions,omitempty"`
-	NumTransitionInstances uint64                `json:"num_transition_instances,omitempty"`
-	TotalWt                uint64                `json:"total_wt,omitempty"`
-	TotalBatchingWt        uint64                `json:"total_batching_wt,omitempty"`
-	TotalPrioritizationWt  uint64                `json:"total_prioritization_wt,omitempty"`
-	TotalContentionWt      uint64                `json:"total_contention_wt,omitempty"`
-	TotalUnavailabilityWt  uint64                `json:"total_unavailability_wt,omitempty"`
-	TotalExtraneousWt      uint64                `json:"total_extraneous_wt,omitempty"`
-	Report                 []JobResultReportItem `json:"report,omitempty"`
+	NumCases               float64                `json:"num_cases,omitempty"`
+	NumActivities          float64                `json:"num_activities,omitempty"`
+	NumActivityInstances   float64                `json:"num_activity_instances,omitempty"`
+	NumTransitions         float64                `json:"num_transitions,omitempty"`
+	NumTransitionInstances float64                `json:"num_transition_instances,omitempty"`
+	TotalWt                float64                `json:"total_wt,omitempty"`
+	TotalBatchingWt        float64                `json:"total_batching_wt,omitempty"`
+	TotalPrioritizationWt  float64                `json:"total_prioritization_wt,omitempty"`
+	TotalContentionWt      float64                `json:"total_contention_wt,omitempty"`
+	TotalUnavailabilityWt  float64                `json:"total_unavailability_wt,omitempty"`
+	TotalExtraneousWt      float64                `json:"total_extraneous_wt,omitempty"`
+	Report                 []*JobResultReportItem `json:"report,omitempty"`
+	CTEImpact              *JobCteImpact          `json:"cte_impact,omitempty"`
 }
