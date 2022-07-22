@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-//go:generate swagger generate spec -o app/spec/swagger.json
+//go:generate swagger generate spec -o app/spec/swagger.json -m
 
 func main() {
 	// Command line flags

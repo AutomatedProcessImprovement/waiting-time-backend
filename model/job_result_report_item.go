@@ -1,5 +1,8 @@
 package model
 
+// JobResultReportItem represents a single item of the activity transition in the report.
+//
+// swagger:model
 type JobResultReportItem struct {
 	SourceActivity   string                  `json:"source_activity"`
 	TargetActivity   string                  `json:"target_activity"`

@@ -12,10 +12,6 @@
   "info": {
     "description": "The tool allows to identify activity transitions given an event log and analyze its waiting times.",
     "title": "Waiting Time Analysis Backend API",
-    "contact": {
-      "name": "Ihar Suvorau",
-      "email": "ihar.suvorau@ut.ee"
-    },
     "version": "1.0.0"
   },
   "host": "193.40.11.233",
@@ -23,19 +19,141 @@
   "paths": {
     "/jobs": {
       "get": {
-        "description": "List all jobs",
+        "summary": "List all jobs.",
         "operationId": "listJobs",
         "responses": {
           "default": {
-            "$ref": "#/responses/ApiResponse"
+            "description": "ApiJobsResponse",
+            "schema": {
+              "$ref": "#/definitions/ApiJobsResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Submit a job for analysis.",
+        "operationId": "postJob",
+        "parameters": [
+          {
+            "description": "Description of a job",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApiRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ApiSingleJobResponse"
+            }
+          },
+          "default": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ApiResponseError"
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{id}": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Get a single job.",
+        "operationId": "getJob",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Job's ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ApiSingleJobResponse"
+            }
+          },
+          "default": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ApiResponseError"
+            }
           }
         }
       }
     }
   },
   "definitions": {
+    "ApiJobsResponse": {
+      "type": "object",
+      "title": "ApiJobsResponse is a response for multiple jobs operation.",
+      "properties": {
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Job"
+          },
+          "x-go-name": "Jobs"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "ApiRequest": {
+      "type": "object",
+      "title": "ApiRequest is a request's body for POST /jobs.",
+      "properties": {
+        "callback_endpoint": {
+          "type": "string",
+          "x-go-name": "CallbackEndpointURL"
+        },
+        "event_log": {
+          "type": "string",
+          "x-go-name": "EventLogURL"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "ApiResponse": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "$ref": "#/definitions/ApiResponseError"
+        },
+        "job": {
+          "$ref": "#/definitions/Job"
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Job"
+          },
+          "x-go-name": "Jobs"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
     "ApiResponseError": {
       "type": "object",
+      "title": "ApiResponseError represents an error response from the API.",
       "properties": {
         "message": {
           "type": "string",
@@ -44,12 +162,13 @@
       },
       "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
     },
-    "Job": {
+    "ApiSingleJobResponse": {
       "type": "object",
-      "title": "Job represents a job to be executed.",
+      "title": "ApiSingleJobResponse is a response for a single job operation.",
       "properties": {
         "callback_endpoint": {
-          "$ref": "#/definitions/URL"
+          "type": "string",
+          "x-go-name": "CallbackEndpoint"
         },
         "created_at": {
           "type": "string",
@@ -61,7 +180,50 @@
           "x-go-name": "Error"
         },
         "event_log": {
+          "type": "string",
+          "x-go-name": "EventLog"
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "CompletedAt"
+        },
+        "id": {
+          "type": "string",
+          "x-go-name": "ID"
+        },
+        "report_csv": {
           "$ref": "#/definitions/URL"
+        },
+        "result": {
+          "$ref": "#/definitions/JobResult"
+        },
+        "status": {
+          "$ref": "#/definitions/JobStatus"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
+    "Job": {
+      "type": "object",
+      "title": "Job represents a job to be executed.",
+      "properties": {
+        "callback_endpoint": {
+          "type": "string",
+          "x-go-name": "CallbackEndpoint"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "x-go-name": "CreatedAt"
+        },
+        "error": {
+          "type": "string",
+          "x-go-name": "Error"
+        },
+        "event_log": {
+          "type": "string",
+          "x-go-name": "EventLog"
         },
         "finished_at": {
           "type": "string",
@@ -190,6 +352,7 @@
     },
     "JobResultReportItem": {
       "type": "object",
+      "title": "JobResultReportItem represents a single item of the activity transition in the report.",
       "properties": {
         "batching_wt": {
           "type": "number",
@@ -251,6 +414,7 @@
     },
     "JobResultResourceItem": {
       "type": "object",
+      "title": "JobResultResourceItem represents a resource pair for an activity transition item.",
       "properties": {
         "batching_wt": {
           "type": "number",
@@ -308,31 +472,47 @@
       "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
     },
     "URL": {
+      "description": "The general form represented is:\n\n[scheme:][//[userinfo@]host][/]path[?query][#fragment]\n\nURLs that do not start with a slash after the scheme are interpreted as:\n\nscheme:opaque[?query][#fragment]\n\nNote that the Path field is stored in decoded form: /%47%6f%2f becomes /Go/.\nA consequence is that it is impossible to tell which slashes in the Path were\nslashes in the raw URL and which were %2f. This distinction is rarely important,\nbut when it is, the code should use RawPath, an optional field which only gets\nset if the default encoding is different from Path.\n\nURL's String method uses the EscapedPath method to obtain the path. See the\nEscapedPath method for more details.",
       "type": "object",
+      "title": "A URL represents a parsed URL (technically, a URI reference).",
       "properties": {
-        "URL": {
-          "$ref": "#/definitions/URL"
+        "ForceQuery": {
+          "type": "boolean"
+        },
+        "Fragment": {
+          "type": "string"
+        },
+        "Host": {
+          "type": "string"
+        },
+        "Opaque": {
+          "type": "string"
+        },
+        "Path": {
+          "type": "string"
+        },
+        "RawFragment": {
+          "type": "string"
+        },
+        "RawPath": {
+          "type": "string"
+        },
+        "RawQuery": {
+          "type": "string"
+        },
+        "Scheme": {
+          "type": "string"
+        },
+        "User": {
+          "$ref": "#/definitions/Userinfo"
         }
       },
-      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
-    }
-  },
-  "responses": {
-    "ApiResponse": {
-      "description": "",
-      "schema": {
-        "$ref": "#/definitions/ApiResponseError"
-      },
-      "headers": {
-        "error": {},
-        "job": {},
-        "jobs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Job"
-          }
-        }
-      }
+      "x-go-package": "net/url"
+    },
+    "Userinfo": {
+      "description": "The Userinfo type is an immutable encapsulation of username and\npassword details for a URL. An existing Userinfo value is guaranteed\nto have a username set (potentially empty, as allowed by RFC 2396),\nand optionally a password.",
+      "type": "object",
+      "x-go-package": "net/url"
     }
   }
 }

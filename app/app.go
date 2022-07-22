@@ -6,7 +6,6 @@
 // Host: 193.40.11.233
 // BasePath: /
 // Version: 1.0.0
-// Contact: Ihar Suvorau<ihar.suvorau@ut.ee>
 //
 // Consumes:
 //     - application/json
@@ -131,7 +130,7 @@ func (app *Application) processJob(job *model.Job) {
 		}
 
 		// download log into job.Dir
-		eventLogURL := job.EventLog.String()
+		eventLogURL := job.EventLogURL.String()
 		eventLogName = path.Base(eventLogURL)
 		eventLogPath := path.Join(job.Dir, eventLogName)
 		if err := download(eventLogURL, eventLogPath, app.logger); err != nil {
@@ -201,7 +200,7 @@ func (app *Application) processJob(job *model.Job) {
 }
 
 func (app *Application) prepareJobResult(job *model.Job) (*model.JobResult, error) {
-	if job.EventLog == nil {
+	if job.EventLogURL == nil {
 		return nil, fmt.Errorf("job has no event log")
 	}
 
@@ -210,7 +209,7 @@ func (app *Application) prepareJobResult(job *model.Job) (*model.JobResult, erro
 		cteSuffix        = "_process_cte_impact.json"
 	)
 
-	eventLogName := path.Base(job.EventLog.String())
+	eventLogName := path.Base(job.EventLogURL.String())
 	eventLogExt := path.Ext(eventLogName)
 
 	// prepare result

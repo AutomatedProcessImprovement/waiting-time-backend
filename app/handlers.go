@@ -33,9 +33,34 @@ func GetSwaggerJSON(app *Application) http.HandlerFunc {
 	}
 }
 
+// swagger:operation GET /jobs/{id} getJob
+//
+// Get a single job.
+//
+// ---
+// Consumes:
+//   - application/json
+//
+// Produces:
+//   - application/json
+//
+// Parameters:
+//   - name: id
+//     in: path
+//     description: Job's ID
+//     required: true
+//     type: string
+//
+// Responses:
+//   default:
+//     schema:
+//       $ref: '#/definitions/ApiResponseError'
+//   200:
+//     schema:
+//       $ref: '#/definitions/ApiSingleJobResponse'
 func GetJobByID(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var apiResponse model.ApiResponse
+		var apiResponse model.ApiSingleJobResponse
 
 		vars := mux.Vars(r)
 		id := vars["id"]
@@ -44,7 +69,8 @@ func GetJobByID(app *Application) http.HandlerFunc {
 		apiResponse.Job = job
 
 		if job == nil {
-			apiResponse.Error_ = &model.ApiResponseError{Message: "job not found"}
+			var apiResponse model.ApiResponseError
+			apiResponse.Message = fmt.Sprintf("job with id %s not found", id)
 			reply(w, http.StatusNotFound, apiResponse, app.logger)
 			return
 		}
@@ -53,50 +79,76 @@ func GetJobByID(app *Application) http.HandlerFunc {
 	}
 }
 
+// swagger:operation POST /jobs postJob
+//
+// Submit a job for analysis.
+//
+// ---
+// Consumes:
+//   - application/json
+//
+// Produces:
+//   - application/json
+//
+// Parameters:
+//   - name: Body
+//     in: body
+//     description: Description of a job
+//     required: true
+//     schema:
+//       $ref: '#/definitions/ApiRequest'
+//
+// Responses:
+//   default:
+//     schema:
+//       $ref: '#/definitions/ApiResponseError'
+//   200:
+//     schema:
+//       $ref: '#/definitions/ApiSingleJobResponse'
 func PostJobs(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var apiRequest model.ApiRequest
-		var apiResponse model.ApiResponse
 
 		if err := json.NewDecoder(r.Body).Decode(&apiRequest); err != nil {
 			message := fmt.Sprintf("invalid request body; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.logger)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Message: message}, app.logger)
 			return
 		}
 
-		job, err := model.NewJob(apiRequest.EventLog, apiRequest.CallbackEndpoint, app.config.ResultsDir)
+		job, err := model.NewJob(apiRequest.EventLogURL_, apiRequest.CallbackEndpointURL_, app.config.ResultsDir)
 		if err != nil {
 			message := fmt.Sprintf("cannot create a job; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.logger)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Message: message}, app.logger)
 			return
 		}
 
 		if err = job.Validate(); err != nil {
 			message := fmt.Sprintf("invalid job; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.logger)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Message: message}, app.logger)
 			return
 		}
 
 		if err = app.AddJob(job); err != nil {
 			message := fmt.Sprintf("failed to add a job to the queue; %s", err)
-			reply(w, http.StatusInternalServerError, model.ApiResponse{Error_: &model.ApiResponseError{Message: message}}, app.logger)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Message: message}, app.logger)
 			return
 		}
 
-		apiResponse.Job = job
+		apiResponse := model.ApiSingleJobResponse{Job: job}
 		reply(w, http.StatusCreated, apiResponse, app.logger)
 	}
 }
 
 // swagger:route GET /jobs listJobs
 //
-// List all jobs
+// List all jobs.
 //
+// ---
 // Responses:
-//   default: ApiResponse
+//   default: ApiJobsResponse
 func GetJobs(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var apiResponse model.ApiResponse
+		var apiResponse model.ApiJobsResponse
 
 		apiResponse.Jobs = app.queue.Jobs
 
@@ -104,7 +156,7 @@ func GetJobs(app *Application) http.HandlerFunc {
 	}
 }
 
-func reply(w http.ResponseWriter, statusCode int, response model.ApiResponse, logger *log.Logger) {
+func reply(w http.ResponseWriter, statusCode int, response interface{}, logger *log.Logger) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(statusCode)
 	err := json.NewEncoder(w).Encode(response)

@@ -19,17 +19,19 @@ var (
 
 // Job represents a job to be executed.
 //
-// swagger:model Job
+// swagger:model
 type Job struct {
-	ID               string     `json:"id,omitempty"`
-	Status           JobStatus  `json:"status,omitempty"`
-	Error            string     `json:"error,omitempty"`
-	Result           *JobResult `json:"result,omitempty"`
-	ReportCSV        *URL       `json:"report_csv,omitempty"`
-	CallbackEndpoint *URL       `json:"callback_endpoint,omitempty"`
-	EventLog         *URL       `json:"event_log,omitempty"`
-	CreatedAt        time.Time  `json:"created_at,omitempty"`
-	CompletedAt      *time.Time `json:"finished_at,omitempty"`
+	ID                  string     `json:"id,omitempty"`
+	Status              JobStatus  `json:"status,omitempty"`
+	Error               string     `json:"error,omitempty"`
+	Result              *JobResult `json:"result,omitempty"`
+	ReportCSV           *URL       `json:"report_csv,omitempty"`
+	CallbackEndpoint    string     `json:"callback_endpoint,omitempty"`
+	CallbackEndpointURL *URL       `json:"-,omitempty"`
+	EventLog            string     `json:"event_log,omitempty"`
+	EventLogURL         *URL       `json:"-,omitempty"`
+	CreatedAt           time.Time  `json:"created_at,omitempty"`
+	CompletedAt         *time.Time `json:"finished_at,omitempty"`
 
 	lock sync.Mutex
 	Dir  string `json:"-"`
@@ -42,12 +44,14 @@ func NewJob(eventLog *URL, callback *URL, basedir string) (*Job, error) {
 	}
 
 	return &Job{
-		ID:               id.String(),
-		Status:           JobStatusPending,
-		CallbackEndpoint: callback,
-		EventLog:         eventLog,
-		CreatedAt:        time.Now(),
-		Dir:              strings.Join([]string{basedir, id.String()}, "/"),
+		ID:                  id.String(),
+		Status:              JobStatusPending,
+		CallbackEndpoint:    callback.String(),
+		CallbackEndpointURL: callback,
+		EventLog:            eventLog.String(),
+		EventLogURL:         eventLog,
+		CreatedAt:           time.Now(),
+		Dir:                 strings.Join([]string{basedir, id.String()}, "/"),
 	}, nil
 }
 
@@ -60,11 +64,11 @@ func (j *Job) Validate() error {
 		return fmt.Errorf("job status is required")
 	}
 
-	if j.CallbackEndpoint.String() == "" {
+	if j.CallbackEndpointURL.String() == "" || j.CallbackEndpoint == "" {
 		return fmt.Errorf("job callback endpoint is required")
 	}
 
-	if j.EventLog.String() == "" {
+	if j.EventLogURL.String() == "" || j.EventLog == "" {
 		return fmt.Errorf("job event log is required")
 	}
 

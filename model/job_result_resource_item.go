@@ -1,5 +1,8 @@
 package model
 
+// JobResultResourceItem represents a resource pair for an activity transition item.
+//
+// swagger:model
 type JobResultResourceItem struct {
 	SourceResource   string  `json:"source_resource"`
 	TargetResource   string  `json:"target_resource"`

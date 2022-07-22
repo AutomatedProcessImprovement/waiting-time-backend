@@ -5,6 +5,8 @@ package_name="waiting-time-backend"
 
 platforms=("linux/amd64" "darwin/amd64" "darwin/arm64" "windows/amd64")
 
+go generate .
+
 for platform in "${platforms[@]}"
 do
 	platform_split=(${platform//\// })
