@@ -70,7 +70,7 @@ func GetJobByID(app *Application) http.HandlerFunc {
 
 		if job == nil {
 			var apiResponse model.ApiResponseError
-			apiResponse.Message = fmt.Sprintf("job with id %s not found", id)
+			apiResponse.Error = fmt.Sprintf("job with id %s not found", id)
 			reply(w, http.StatusNotFound, apiResponse, app.logger)
 			return
 		}
@@ -111,26 +111,26 @@ func PostJobs(app *Application) http.HandlerFunc {
 
 		if err := json.NewDecoder(r.Body).Decode(&apiRequest); err != nil {
 			message := fmt.Sprintf("invalid request body; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponseError{Message: message}, app.logger)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
 			return
 		}
 
 		job, err := model.NewJob(apiRequest.EventLogURL_, apiRequest.CallbackEndpointURL_, app.config.ResultsDir)
 		if err != nil {
 			message := fmt.Sprintf("cannot create a job; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponseError{Message: message}, app.logger)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
 			return
 		}
 
 		if err = job.Validate(); err != nil {
 			message := fmt.Sprintf("invalid job; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponseError{Message: message}, app.logger)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
 			return
 		}
 
 		if err = app.AddJob(job); err != nil {
 			message := fmt.Sprintf("failed to add a job to the queue; %s", err)
-			reply(w, http.StatusInternalServerError, model.ApiResponseError{Message: message}, app.logger)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
 			return
 		}
 
