@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -127,26 +129,28 @@ func (app *Application) processJob(job *model.Job) {
 	}
 
 	// pre-work
-	var eventLogName string
+	var eventLogName = path.Base(job.EventLogURL.String())
 	{
 		app.logger.Printf("Job %s started", job.ID)
 		job.SetStatus(model.JobStatusRunning)
 
-		// job's directory
-		if err := mkdir(job.Dir); err != nil {
-			app.logger.Printf("error creating job's directory: %s", err.Error())
-			job.SetError(err)
-			return
-		}
-
-		// download log into job.Dir
-		eventLogURL := job.EventLogURL.String()
-		eventLogName = path.Base(eventLogURL)
 		eventLogPath := path.Join(job.Dir, eventLogName)
-		if err := download(eventLogURL, eventLogPath, app.logger); err != nil {
-			app.logger.Printf("error downloading event log: %s", err.Error())
-			job.SetError(err)
-			return
+
+		// if the job was created from a request body, then the even log file is already downloaded
+		if !job.EventLogFromRequestBody {
+			// job's directory
+			if err := mkdir(job.Dir); err != nil {
+				app.logger.Printf("error creating job's directory: %s", err.Error())
+				job.SetError(err)
+				return
+			}
+
+			// download log into job.Dir
+			if err := download(job.EventLogURL.String(), eventLogPath, app.logger); err != nil {
+				app.logger.Printf("error downloading event log: %s", err.Error())
+				job.SetError(err)
+				return
+			}
 		}
 
 		// make MD5 hash of the log to check for uniqueness of the file
@@ -156,7 +160,7 @@ func (app *Application) processJob(job *model.Job) {
 		foundJob := app.queue.FindByMD5(job.EventLogMD5)
 		if foundJob != nil && foundJob.ID != job.ID && foundJob.Status != model.JobStatusPending {
 			app.logger.Printf("Job %s skipped; log has been processed before", job.ID)
-			job.SetStatus(foundJob.Status)
+			job.SetStatus(model.JobStatusDuplicate)
 			job.SetResult(foundJob.Result)
 			job.SetReportCSV(foundJob.ReportCSV)
 			job.SetCompletedAt(time.Now())
@@ -279,4 +283,64 @@ func (app *Application) runAnalysis(ctx context.Context, eventLogName, jobDir, j
 	}
 
 	return err
+}
+
+func (app *Application) newJobFromRequestBody(body io.ReadCloser) (*model.Job, error) {
+	defer func() {
+		if err := body.Close(); err != nil {
+			app.logger.Printf("error closing request body: %s", err.Error())
+		}
+	}()
+
+	jobID, err := uuid.NewUUID()
+	if err != nil {
+		return nil, err
+	}
+
+	jobDir := strings.Join([]string{app.config.ResultsDir, jobID.String()}, "/")
+
+	logName := "event_log.csv"
+
+	logPath := path.Join(jobDir, logName)
+
+	if err := mkdir(jobDir); err != nil {
+		return nil, err
+	}
+
+	f, err := os.Create(logPath)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			app.logger.Printf("error closing file: %s", err.Error())
+		}
+	}()
+
+	if _, err := io.Copy(f, body); err != nil {
+		return nil, err
+	}
+
+	host := os.Getenv("WEBAPP_HOST")
+	if len(host) == 0 {
+		host = app.config.Host
+	}
+
+	eventLog := fmt.Sprintf("http://%s/assets/results/%s/%s", host, jobID, logName)
+
+	eventLogURL, err := url.Parse(eventLog)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.Job{
+		ID:                      jobID.String(),
+		Status:                  model.JobStatusPending,
+		EventLog:                eventLog,
+		EventLogURL:             &model.URL{URL: eventLogURL},
+		EventLogFromRequestBody: true,
+		CreatedAt:               time.Now(),
+		Dir:                     jobDir,
+	}, nil
 }

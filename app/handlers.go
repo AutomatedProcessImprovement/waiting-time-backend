@@ -81,11 +81,12 @@ func GetJobByID(app *Application) http.HandlerFunc {
 
 // swagger:operation POST /jobs postJob
 //
-// Submit a job for analysis.
+// Submit a job for analysis. The endpoint accepts JSON and CSV request bodies.
 //
 // ---
 // Consumes:
 //   - application/json
+//   - text/csv
 //
 // Produces:
 //   - application/json
@@ -105,8 +106,16 @@ func GetJobByID(app *Application) http.HandlerFunc {
 //   200:
 //     schema:
 //       $ref: '#/definitions/ApiSingleJobResponse'
-func PostJobs(app *Application) http.HandlerFunc {
+func PostJob(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Read the event log from the request body
+		if r.Header.Get("Content-Type") != "application/json" {
+			PostJobFromBody(app)(w, r)
+			return
+		}
+
+		// Create a new job from the JSON request
+
 		var apiRequest model.ApiRequest
 
 		if err := json.NewDecoder(r.Body).Decode(&apiRequest); err != nil {
@@ -118,6 +127,32 @@ func PostJobs(app *Application) http.HandlerFunc {
 		job, err := model.NewJob(apiRequest.EventLogURL_, apiRequest.CallbackEndpointURL_, app.config.ResultsDir)
 		if err != nil {
 			message := fmt.Sprintf("cannot create a job; %s", err)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = job.Validate(); err != nil {
+			message := fmt.Sprintf("invalid job; %s", err)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = app.AddJob(job); err != nil {
+			message := fmt.Sprintf("failed to add a job to the queue; %s", err)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		apiResponse := model.ApiSingleJobResponse{Job: job}
+		reply(w, http.StatusCreated, apiResponse, app.logger)
+	}
+}
+
+func PostJobFromBody(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		job, err := app.newJobFromRequestBody(r.Body)
+		if err != nil {
+			message := fmt.Sprintf("failed to create a job from the request body; %s", err)
 			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
 			return
 		}

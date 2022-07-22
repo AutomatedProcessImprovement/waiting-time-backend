@@ -42,11 +42,11 @@ func (app *Application) initializeRouter() {
 		},
 
 		Route{
-			"PostJobs",
+			"PostJob",
 			"POST",
 			"/jobs",
 			"",
-			PostJobs(app),
+			PostJob(app),
 		},
 
 		Route{

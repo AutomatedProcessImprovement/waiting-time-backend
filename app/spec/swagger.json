@@ -32,12 +32,13 @@
       },
       "post": {
         "consumes": [
-          "application/json"
+          "application/json",
+          "text/csv"
         ],
         "produces": [
           "application/json"
         ],
-        "summary": "Submit a job for analysis.",
+        "summary": "Submit a job for analysis. The endpoint accepts JSON and CSV request bodies.",
         "operationId": "postJob",
         "parameters": [
           {
@@ -155,9 +156,9 @@
       "type": "object",
       "title": "ApiResponseError represents an error response from the API.",
       "properties": {
-        "message": {
+        "error": {
           "type": "string",
-          "x-go-name": "Message"
+          "x-go-name": "Error"
         }
       },
       "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
@@ -182,6 +183,10 @@
         "event_log": {
           "type": "string",
           "x-go-name": "EventLog"
+        },
+        "event_log_md5": {
+          "type": "string",
+          "x-go-name": "EventLogMD5"
         },
         "finished_at": {
           "type": "string",
@@ -224,6 +229,10 @@
         "event_log": {
           "type": "string",
           "x-go-name": "EventLog"
+        },
+        "event_log_md5": {
+          "type": "string",
+          "x-go-name": "EventLogMD5"
         },
         "finished_at": {
           "type": "string",
