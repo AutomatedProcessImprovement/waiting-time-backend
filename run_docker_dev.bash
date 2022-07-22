@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-WEBAPP_HOST=localhost:8080 docker compose up --remove-orphans --build
+cp env.development .env
+docker compose --file docker-compose.yml up --remove-orphans --build

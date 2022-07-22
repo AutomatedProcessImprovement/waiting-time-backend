@@ -1,9 +1,12 @@
 services:
 
   web:
+    image: nokal/waiting-time-backend
     build: .
     volumes:
       - ./assets:/srv/webapp/assets
+    environment:
+      WEBAPP_HOST: ${WEBAPP_HOST}
     restart: always
 
   swagger:
@@ -17,10 +20,12 @@ services:
   nginx:
     image: nginx
     ports:
-      - "8080:8080"
+      - ${HOST_PORT}:80
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
     restart: always
+    environment:
+      NGINX_HOST: ${NGINX_HOST}
     depends_on:
       - web
       - swagger
