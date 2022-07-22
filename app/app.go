@@ -104,7 +104,16 @@ func (app *Application) SaveQueue() error {
 func (app *Application) LoadQueue() error {
 	app.queue.lock.Lock()
 	defer app.queue.lock.Unlock()
-	return readGob(app.config.QueuePath, app.queue, app.logger)
+	err := readGob(app.config.QueuePath, app.queue, app.logger)
+	if os.IsNotExist(err) {
+		err = nil
+	} else if err != nil {
+		return fmt.Errorf("error loading queue: %s", err.Error())
+	}
+	if app.queue.Jobs == nil {
+		app.queue.Jobs = []*model.Job{}
+	}
+	return err
 }
 
 func (app *Application) processJob(job *model.Job) {

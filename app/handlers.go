@@ -148,10 +148,7 @@ func PostJobs(app *Application) http.HandlerFunc {
 //   default: ApiJobsResponse
 func GetJobs(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var apiResponse model.ApiJobsResponse
-
-		apiResponse.Jobs = app.queue.Jobs
-
+		apiResponse := model.ApiJobsResponse{Jobs: app.queue.Jobs}
 		reply(w, http.StatusOK, apiResponse, app.logger)
 	}
 }
