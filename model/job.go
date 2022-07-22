@@ -30,6 +30,7 @@ type Job struct {
 	CallbackEndpointURL *URL       `json:"-,omitempty"`
 	EventLog            string     `json:"event_log,omitempty"`
 	EventLogURL         *URL       `json:"-,omitempty"`
+	EventLogMD5         string     `json:"event_log_md5,omitempty"`
 	CreatedAt           time.Time  `json:"created_at,omitempty"`
 	CompletedAt         *time.Time `json:"finished_at,omitempty"`
 

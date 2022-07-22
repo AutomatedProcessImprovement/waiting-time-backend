@@ -1,7 +1,9 @@
 package app
 
 import (
+	"crypto/md5"
 	"encoding/gob"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"log"
@@ -93,4 +95,22 @@ func download(url string, path string, logger *log.Logger) error {
 
 	_, err = io.Copy(out, resp.Body)
 	return err
+}
+
+func md5sum(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("error closing file: %s", err.Error())
+		}
+	}()
+
+	h := md5.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
 }

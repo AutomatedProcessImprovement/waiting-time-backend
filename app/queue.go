@@ -67,6 +67,19 @@ func (q *Queue) FindByID(id string) *model.Job {
 	return nil
 }
 
+func (q *Queue) FindByMD5(md5 string) *model.Job {
+	for _, j := range q.Jobs {
+		if j == nil {
+			continue
+		}
+
+		if j.EventLogMD5 == md5 {
+			return j
+		}
+	}
+	return nil
+}
+
 // Next finds the first pending job in the queue.
 func (q *Queue) Next() *model.Job {
 	q.sort()

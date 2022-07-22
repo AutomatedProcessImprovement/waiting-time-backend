@@ -18,6 +18,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/model"
 	"github.com/gorilla/mux"
@@ -145,6 +146,23 @@ func (app *Application) processJob(job *model.Job) {
 		if err := download(eventLogURL, eventLogPath, app.logger); err != nil {
 			app.logger.Printf("error downloading event log: %s", err.Error())
 			job.SetError(err)
+			return
+		}
+
+		// make MD5 hash of the log to check for uniqueness of the file
+		job.EventLogMD5, _ = md5sum(eventLogPath) // NOTE: we can ignore the error here
+
+		// if the log has been processed before, skip analysis and assign the result to the job
+		foundJob := app.queue.FindByMD5(job.EventLogMD5)
+		if foundJob != nil && foundJob.ID != job.ID && foundJob.Status != model.JobStatusPending {
+			app.logger.Printf("Job %s skipped; log has been processed before", job.ID)
+			job.SetStatus(foundJob.Status)
+			job.SetResult(foundJob.Result)
+			job.SetReportCSV(foundJob.ReportCSV)
+			job.SetCompletedAt(time.Now())
+			if foundJob.Error != "" {
+				job.SetError(errors.New(foundJob.Error))
+			}
 			return
 		}
 	}
