@@ -1,12 +1,5 @@
 package model
 
-// swagger:model
-type ApiResponse struct {
-	Job    *Job              `json:"job,omitempty"`
-	Jobs   []*Job            `json:"jobs,omitempty"`
-	Error_ *ApiResponseError `json:"error,omitempty"`
-}
-
 // ApiSingleJobResponse is a response for a single job operation.
 //
 // swagger:model

@@ -34,6 +34,14 @@ func (app *Application) initializeRouter() {
 		},
 
 		Route{
+			"CancelJobByID",
+			"GET",
+			"/jobs/{id}/cancel",
+			"",
+			CancelJobByID(app),
+		},
+
+		Route{
 			"GetJobByID",
 			"GET",
 			"/jobs/{id}",

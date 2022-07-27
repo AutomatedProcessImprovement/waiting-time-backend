@@ -17,6 +17,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -30,6 +31,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -38,6 +40,8 @@ type Application struct {
 	queue  *Queue
 	config *Configuration
 	logger *log.Logger
+
+	analysisCancelFunc context.CancelFunc
 }
 
 func NewApplication(config *Configuration) (*Application, error) {
@@ -175,6 +179,8 @@ func (app *Application) processJob(job *model.Job) {
 	{
 		ctx, cancel := context.WithTimeout(context.Background(), app.config.JobTimeout)
 		defer cancel()
+		// gives control over the running analysis process to the whole app
+		app.analysisCancelFunc = cancel
 
 		host := os.Getenv("WEBAPP_HOST")
 		if len(host) == 0 {
@@ -183,16 +189,17 @@ func (app *Application) processJob(job *model.Job) {
 
 		jobErrorChan := make(chan error)
 		go func() {
-			jobErrorChan <- app.runAnalysis(ctx, eventLogName, job.Dir, job.ID)
+			jobErrorChan <- app.runAnalysis(ctx, eventLogName, job)
 		}()
 
 		const reportSuffixCSV = "_transitions_report.csv"
 
 		select {
 		case <-ctx.Done():
-			app.logger.Printf("Job %s timed out", job.ID)
-			job.SetError(fmt.Errorf("job timed out"))
+			app.logger.Printf("Job %s has been interrupted", job.ID)
+			job.SetError(fmt.Errorf("job has been interrupted"))
 			job.SetStatus(model.JobStatusFailed)
+
 		case jobError := <-jobErrorChan:
 			if jobError != nil {
 				app.logger.Printf("Job %s failed; %s", job.ID, jobError.Error())
@@ -264,8 +271,8 @@ func (app *Application) prepareJobResult(job *model.Job) (*model.JobResult, erro
 	return &result, nil
 }
 
-func (app *Application) runAnalysis(ctx context.Context, eventLogName, jobDir, jobID string) error {
-	jobDir, err := abspath(jobDir)
+func (app *Application) runAnalysis(ctx context.Context, eventLogName string, job *model.Job) error {
+	jobDir, err := abspath(job.Dir)
 	if err != nil {
 		return err
 	}
@@ -277,11 +284,36 @@ func (app *Application) runAnalysis(ctx context.Context, eventLogName, jobDir, j
 	}
 	args := fmt.Sprintf("bash %s %s %s", scriptName, eventLogPath, jobDir)
 
-	out, err := exec.CommandContext(ctx, "sh", "-c", args).Output()
-	if len(out) > 0 {
-		app.logger.Printf("Job %s output: %s", jobID, out)
+	cmd := exec.CommandContext(ctx, "sh", "-c", args)
+
+	// sets process group ID to kill all processes in the group later on cancel if needed
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// capture stdout and stderr
+	cmd.Stdout = app.logger.Writer()
+	var buf bytes.Buffer
+	errWriter := io.MultiWriter(app.logger.Writer(), &buf)
+	cmd.Stderr = errWriter
+
+	// interrupt the command if the context is cancelled
+	go func() {
+		select {
+		case <-ctx.Done():
+			if err = syscall.Kill(-1*cmd.Process.Pid, syscall.SIGKILL); err != nil {
+				app.logger.Printf("Error cancelling job: %s", err.Error())
+			}
+		}
+	}()
+
+	if err = cmd.Start(); err != nil {
+		return errors.New(fmt.Sprintf("error starting analysis: %s", err.Error()))
 	}
 
+	app.logger.Printf("Job %s executing", job.ID)
+
+	if err = cmd.Wait(); err != nil {
+		err = fmt.Errorf("error executing analysis: %s; stderr: %s", err.Error(), buf.String())
+	}
 	return err
 }
 

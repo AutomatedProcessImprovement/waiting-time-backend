@@ -101,6 +101,38 @@
           }
         }
       }
+    },
+    "/jobs/{id}/cancel": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Cancel processing of a job.",
+        "operationId": "cancelJob",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Job's ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ApiSingleJobResponse"
+            }
+          },
+          "default": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ApiResponseError"
+            }
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -129,25 +161,6 @@
         "event_log": {
           "type": "string",
           "x-go-name": "EventLogURL"
-        }
-      },
-      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
-    },
-    "ApiResponse": {
-      "type": "object",
-      "properties": {
-        "error": {
-          "$ref": "#/definitions/ApiResponseError"
-        },
-        "job": {
-          "$ref": "#/definitions/Job"
-        },
-        "jobs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Job"
-          },
-          "x-go-name": "Jobs"
         }
       },
       "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"

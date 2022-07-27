@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/model"
 	"github.com/gorilla/mux"
@@ -76,6 +77,62 @@ func GetJobByID(app *Application) http.HandlerFunc {
 		}
 
 		reply(w, http.StatusOK, apiResponse, app.logger)
+	}
+}
+
+// swagger:operation GET /jobs/{id}/cancel cancelJob
+//
+// Cancel processing of a job.
+//
+// ---
+// Produces:
+//   - application/json
+//
+// Parameters:
+//   - name: id
+//     in: path
+//     description: Job's ID
+//     required: true
+//     type: string
+//
+// Responses:
+//   default:
+//     schema:
+//       $ref: '#/definitions/ApiResponseError'
+//   200:
+//     schema:
+//       $ref: '#/definitions/ApiSingleJobResponse'
+func CancelJobByID(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		id := vars["id"]
+
+		job := app.queue.FindByID(id)
+		if job == nil {
+			var apiResponse model.ApiResponseError
+			apiResponse.Error = fmt.Sprintf("job with id %s not found", id)
+			reply(w, http.StatusNotFound, apiResponse, app.logger)
+			return
+		}
+
+		if job.Status == model.JobStatusPending {
+			job.SetStatus(model.JobStatusFailed)
+			job.SetError(errors.New("job cancelled by user"))
+			reply(w, http.StatusOK, model.ApiSingleJobResponse{Job: job}, app.logger)
+			return
+		}
+
+		if job.Status == model.JobStatusRunning {
+			// NOTE: this works because we have only one running job at a time and this cancel func cancels whichever
+			// job is running at the moment independent of the job ID
+			app.analysisCancelFunc()
+
+			job.SetStatus(model.JobStatusFailed)
+			reply(w, http.StatusOK, model.ApiSingleJobResponse{Job: job}, app.logger)
+			return
+		}
+
+		reply(w, http.StatusBadRequest, model.ApiResponseError{Error: "job cannot be cancelled"}, app.logger)
 	}
 }
 
