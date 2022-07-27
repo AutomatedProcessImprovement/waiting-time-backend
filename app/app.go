@@ -30,6 +30,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -286,8 +287,10 @@ func (app *Application) runAnalysis(ctx context.Context, eventLogName string, jo
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", args)
 
-	// sets process group ID to kill all processes in the group later on cancel if needed
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if runtime.GOOS != "windows" {
+		// sets process group ID to kill all processes in the group later on cancel if needed
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
 
 	// capture stdout and stderr
 	cmd.Stdout = app.logger.Writer()
