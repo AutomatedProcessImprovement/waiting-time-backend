@@ -17,6 +17,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -269,6 +271,14 @@ func (app *Application) newJobFromRequestBody(body io.ReadCloser) (*model.Job, e
 		}
 	}()
 
+	bodyBytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading request body: %s", err.Error())
+	}
+	if len(bodyBytes) == 0 {
+		return nil, fmt.Errorf("request body is empty")
+	}
+
 	jobID, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
@@ -295,7 +305,7 @@ func (app *Application) newJobFromRequestBody(body io.ReadCloser) (*model.Job, e
 		}
 	}()
 
-	if _, err := io.Copy(f, body); err != nil {
+	if _, err := io.Copy(f, bytes.NewReader(bodyBytes)); err != nil {
 		return nil, err
 	}
 

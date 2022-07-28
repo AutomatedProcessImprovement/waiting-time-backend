@@ -3,7 +3,7 @@ package model
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"strings"
+	"path"
 	"sync"
 	"time"
 )
@@ -54,7 +54,7 @@ func NewJob(eventLog *URL, callback *URL, basedir string) (*Job, error) {
 		EventLog:            eventLog.String(),
 		EventLogURL:         eventLog,
 		CreatedAt:           time.Now(),
-		Dir:                 strings.Join([]string{basedir, id.String()}, "/"),
+		Dir:                 path.Join(basedir, id.String()),
 	}, nil
 }
 

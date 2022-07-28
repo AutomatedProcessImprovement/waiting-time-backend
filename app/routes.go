@@ -18,11 +18,11 @@ type Routes []Route
 func (app *Application) initializeRouter() {
 	var routes = Routes{
 		Route{
-			"GetSwaggerJSON",
+			"SwaggerJSON",
 			"GET",
 			"/swagger.json",
 			"",
-			GetSwaggerJSON(app),
+			SwaggerJSON(app),
 		},
 
 		Route{

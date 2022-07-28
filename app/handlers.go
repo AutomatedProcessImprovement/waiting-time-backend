@@ -29,11 +29,154 @@ func StaticAssets(app *Application) http.HandlerFunc {
 //go:embed spec/swagger.json
 var swaggerJSON string
 
-func GetSwaggerJSON(app *Application) http.HandlerFunc {
+func SwaggerJSON(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = fmt.Fprintf(w, swaggerJSON)
+	}
+}
+
+// swagger:route GET /jobs listJobs
+//
+// List all jobs.
+//
+// ---
+// Responses:
+//   default: ApiJobsResponse
+func GetJobs(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		apiResponse := model.ApiJobsResponse{Jobs: app.queue.Jobs}
+		reply(w, http.StatusOK, apiResponse, app.logger)
+	}
+}
+
+// swagger:operation POST /jobs postJob
+//
+// Submit a job for analysis. The endpoint accepts JSON and CSV request bodies.
+//
+// ---
+// Consumes:
+//   - application/json
+//   - text/csv
+//
+// Produces:
+//   - application/json
+//
+// Parameters:
+//   - name: Body
+//     in: body
+//     description: Description of a job
+//     required: true
+//     schema:
+//       $ref: '#/definitions/ApiRequest'
+//
+// Responses:
+//   default:
+//     schema:
+//       $ref: '#/definitions/ApiResponseError'
+//   200:
+//     schema:
+//       $ref: '#/definitions/ApiSingleJobResponse'
+func PostJob(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Read the event log from the request body
+		if r.Header.Get("Content-Type") != "application/json" {
+			PostJobFromBody(app)(w, r)
+			return
+		}
+
+		// Create a new job from the JSON request
+
+		var apiRequest model.ApiRequest
+
+		if err := json.NewDecoder(r.Body).Decode(&apiRequest); err != nil {
+			message := fmt.Sprintf("invalid request body; %s", err)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		job, err := model.NewJob(apiRequest.EventLogURL_, apiRequest.CallbackEndpointURL_, app.config.ResultsDir)
+		if err != nil {
+			message := fmt.Sprintf("cannot create a job; %s", err)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = job.Validate(); err != nil {
+			message := fmt.Sprintf("invalid job; %s", err)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = app.AddJob(job); err != nil {
+			message := fmt.Sprintf("failed to add a job to the queue; %s", err)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		apiResponse := model.ApiSingleJobResponse{Job: job}
+		reply(w, http.StatusCreated, apiResponse, app.logger)
+	}
+}
+
+func PostJobFromBody(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		job, err := app.newJobFromRequestBody(r.Body)
+		if err != nil {
+			message := fmt.Sprintf("failed to create a job from the request body; %s", err)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = job.Validate(); err != nil {
+			message := fmt.Sprintf("invalid job; %s", err)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = app.AddJob(job); err != nil {
+			message := fmt.Sprintf("failed to add a job to the queue; %s", err)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		apiResponse := model.ApiSingleJobResponse{Job: job}
+		reply(w, http.StatusCreated, apiResponse, app.logger)
+	}
+}
+
+// swagger:route DELETE /jobs deleteJobs
+//
+// Delete all non-running jobs. If a job is running, it returns an error. Cancel the running jobs manually before deleting them.
+//
+// ---
+// Responses:
+//   default: ApiResponseError
+//   200: ApiJobsResponse
+func DeleteJobs(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := app.queue.Clear()
+		if err != nil {
+			message := fmt.Sprintf("failed to clear the queue; %s", err)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = app.SaveQueue(); err != nil {
+			message := fmt.Sprintf("failed to save the queue; %s", err)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = app.LoadQueue(); err != nil {
+			message := fmt.Sprintf("failed to load the queue; %s", err)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		apiResponse := model.ApiJobsResponse{Jobs: app.queue.Jobs}
+		reply(w, http.StatusOK, apiResponse, app.logger)
 	}
 }
 
@@ -136,149 +279,6 @@ func CancelJobByID(app *Application) http.HandlerFunc {
 		}
 
 		reply(w, http.StatusBadRequest, model.ApiResponseError{Error: "job cannot be cancelled"}, app.logger)
-	}
-}
-
-// swagger:operation POST /jobs postJob
-//
-// Submit a job for analysis. The endpoint accepts JSON and CSV request bodies.
-//
-// ---
-// Consumes:
-//   - application/json
-//   - text/csv
-//
-// Produces:
-//   - application/json
-//
-// Parameters:
-//   - name: Body
-//     in: body
-//     description: Description of a job
-//     required: true
-//     schema:
-//       $ref: '#/definitions/ApiRequest'
-//
-// Responses:
-//   default:
-//     schema:
-//       $ref: '#/definitions/ApiResponseError'
-//   200:
-//     schema:
-//       $ref: '#/definitions/ApiSingleJobResponse'
-func PostJob(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Read the event log from the request body
-		if r.Header.Get("Content-Type") != "application/json" {
-			PostJobFromBody(app)(w, r)
-			return
-		}
-
-		// Create a new job from the JSON request
-
-		var apiRequest model.ApiRequest
-
-		if err := json.NewDecoder(r.Body).Decode(&apiRequest); err != nil {
-			message := fmt.Sprintf("invalid request body; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		job, err := model.NewJob(apiRequest.EventLogURL_, apiRequest.CallbackEndpointURL_, app.config.ResultsDir)
-		if err != nil {
-			message := fmt.Sprintf("cannot create a job; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		if err = job.Validate(); err != nil {
-			message := fmt.Sprintf("invalid job; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		if err = app.AddJob(job); err != nil {
-			message := fmt.Sprintf("failed to add a job to the queue; %s", err)
-			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		apiResponse := model.ApiSingleJobResponse{Job: job}
-		reply(w, http.StatusCreated, apiResponse, app.logger)
-	}
-}
-
-func PostJobFromBody(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		job, err := app.newJobFromRequestBody(r.Body)
-		if err != nil {
-			message := fmt.Sprintf("failed to create a job from the request body; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		if err = job.Validate(); err != nil {
-			message := fmt.Sprintf("invalid job; %s", err)
-			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		if err = app.AddJob(job); err != nil {
-			message := fmt.Sprintf("failed to add a job to the queue; %s", err)
-			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		apiResponse := model.ApiSingleJobResponse{Job: job}
-		reply(w, http.StatusCreated, apiResponse, app.logger)
-	}
-}
-
-// swagger:route GET /jobs listJobs
-//
-// List all jobs.
-//
-// ---
-// Responses:
-//   default: ApiJobsResponse
-func GetJobs(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		apiResponse := model.ApiJobsResponse{Jobs: app.queue.Jobs}
-		reply(w, http.StatusOK, apiResponse, app.logger)
-	}
-}
-
-// swagger:route DELETE /jobs deleteJobs
-//
-// Delete all non-running jobs. If a job is running, it returns an error. Cancel the running jobs manually before deleting them.
-//
-// ---
-// Responses:
-//   default: ApiResponseError
-//   200: ApiJobsResponse
-func DeleteJobs(app *Application) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		err := app.queue.Clear()
-		if err != nil {
-			message := fmt.Sprintf("failed to clear the queue; %s", err)
-			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		if err = app.SaveQueue(); err != nil {
-			message := fmt.Sprintf("failed to save the queue; %s", err)
-			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		if err = app.LoadQueue(); err != nil {
-			message := fmt.Sprintf("failed to load the queue; %s", err)
-			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
-			return
-		}
-
-		apiResponse := model.ApiJobsResponse{Jobs: app.queue.Jobs}
-		reply(w, http.StatusOK, apiResponse, app.logger)
 	}
 }
 
