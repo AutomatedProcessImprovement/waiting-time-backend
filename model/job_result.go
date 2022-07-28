@@ -10,6 +10,7 @@ type JobResult struct {
 	NumActivityInstances   float64                `json:"num_activity_instances"`
 	NumTransitions         float64                `json:"num_transitions"`
 	NumTransitionInstances float64                `json:"num_transition_instances"`
+	TotalPt                float64                `json:"total_pt"`
 	TotalWt                float64                `json:"total_wt"`
 	TotalBatchingWt        float64                `json:"total_batching_wt"`
 	TotalPrioritizationWt  float64                `json:"total_prioritization_wt"`
@@ -17,5 +18,6 @@ type JobResult struct {
 	TotalUnavailabilityWt  float64                `json:"total_unavailability_wt"`
 	TotalExtraneousWt      float64                `json:"total_extraneous_wt"`
 	Report                 []*JobResultReportItem `json:"report"`
+	ProcessCTE             float64                `json:"process_cte"`
 	CTEImpact              *JobCteImpact          `json:"cte_impact"`
 }

@@ -42,6 +42,7 @@ func (app *Application) runAnalysis(ctx context.Context, eventLogName string, jo
 	go func() {
 		select {
 		case <-ctx.Done():
+			// NOTE: unix specific code
 			if err = syscall.Kill(-1*cmd.Process.Pid, syscall.SIGKILL); err != nil {
 				app.logger.Printf("Error cancelling job: %s", err.Error())
 			}

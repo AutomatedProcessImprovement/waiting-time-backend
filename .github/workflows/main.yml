@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: go get ${{ env.MODULE_NAME }}
 
+      - name: Test
+        run: go test -v ${{ env.MODULE_NAME }}
+
       - name: Build binaries
         run: bash build_app.bash
 

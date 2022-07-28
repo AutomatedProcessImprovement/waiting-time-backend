@@ -332,6 +332,11 @@
           "format": "double",
           "x-go-name": "NumTransitions"
         },
+        "process_cte": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "ProcessCTE"
+        },
         "report": {
           "type": "array",
           "items": {
@@ -358,6 +363,11 @@
           "type": "number",
           "format": "double",
           "x-go-name": "TotalPrioritizationWt"
+        },
+        "total_pt": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "TotalPt"
         },
         "total_unavailability_wt": {
           "type": "number",
@@ -390,6 +400,14 @@
           "type": "number",
           "format": "double",
           "x-go-name": "ContentionWt"
+        },
+        "cte_impact": {
+          "$ref": "#/definitions/JobCteImpact"
+        },
+        "cte_impact_total": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "CTEImpactTotal"
         },
         "extraneous_wt": {
           "type": "number",

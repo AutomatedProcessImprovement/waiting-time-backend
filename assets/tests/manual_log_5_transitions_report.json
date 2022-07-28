@@ -1,0 +1,218 @@
+{
+  "num_cases": 15,
+  "num_activities": 7,
+  "num_activity_instances": 57,
+  "num_transitions": 5,
+  "num_transition_instances": 42.0,
+  "total_pt": 80820.0,
+  "total_wt": 99000.0,
+  "total_batching_wt": 16200.0,
+  "total_prioritization_wt": 27000.0,
+  "total_contention_wt": 48600.0,
+  "total_unavailability_wt": 5400.0,
+  "total_extraneous_wt": 1800.0,
+  "process_cte": 0.4494494494494494,
+  "cte_impact": {
+    "batching_impact": 0.49394939493949397,
+    "contention_impact": 0.6159122085048011,
+    "prioritization_impact": 0.5288574793875147,
+    "unavailability_impact": 0.4633642930856553,
+    "extraneous_impact": 0.4539939332659252
+  },
+  "report": [
+    {
+      "source_activity": "A",
+      "target_activity": "B",
+      "case_freq": 0.8,
+      "total_freq": 12.0,
+      "total_wt": 91800.0,
+      "batching_wt": 16200.0,
+      "prioritization_wt": 27000.0,
+      "contention_wt": 48600.0,
+      "unavailability_wt": 0.0,
+      "extraneous_wt": 0.0,
+      "cte_impact_total_wt": 0.918200408997955,
+      "cte_impact": {
+        "batching_impact": 0.49394939493949397,
+        "contention_impact": 0.6159122085048011,
+        "prioritization_impact": 0.5288574793875147,
+        "unavailability_impact": 0.4494494494494494,
+        "extraneous_impact": 0.4494494494494494
+      },
+      "wt_by_resource": [
+        {
+          "source_resource": "Marcus",
+          "target_resource": "Anya",
+          "case_freq": 0.8,
+          "total_freq": 12.0,
+          "total_wt": 91800.0,
+          "batching_wt": 16200.0,
+          "prioritization_wt": 27000.0,
+          "contention_wt": 48600.0,
+          "unavailability_wt": 0.0,
+          "extraneous_wt": 0.0
+        }
+      ]
+    },
+    {
+      "source_activity": "B",
+      "target_activity": "C",
+      "case_freq": 0.4,
+      "total_freq": 12.0,
+      "total_wt": 0.0,
+      "batching_wt": 0.0,
+      "prioritization_wt": 0.0,
+      "contention_wt": 0.0,
+      "unavailability_wt": 0.0,
+      "extraneous_wt": 0.0,
+      "cte_impact_total_wt": 0.4494494494494494,
+      "cte_impact": {
+        "batching_impact": 0.4494494494494494,
+        "contention_impact": 0.4494494494494494,
+        "prioritization_impact": 0.4494494494494494,
+        "unavailability_impact": 0.4494494494494494,
+        "extraneous_impact": 0.4494494494494494
+      },
+      "wt_by_resource": [
+        {
+          "source_resource": "Anya",
+          "target_resource": "Carmine",
+          "case_freq": 0.4,
+          "total_freq": 6.0,
+          "total_wt": 0.0,
+          "batching_wt": 0.0,
+          "prioritization_wt": 0.0,
+          "contention_wt": 0.0,
+          "unavailability_wt": 0.0,
+          "extraneous_wt": 0.0
+        },
+        {
+          "source_resource": "Anya",
+          "target_resource": "Dom",
+          "case_freq": 0.4,
+          "total_freq": 6.0,
+          "total_wt": 0.0,
+          "batching_wt": 0.0,
+          "prioritization_wt": 0.0,
+          "contention_wt": 0.0,
+          "unavailability_wt": 0.0,
+          "extraneous_wt": 0.0
+        }
+      ]
+    },
+    {
+      "source_activity": "C",
+      "target_activity": "D",
+      "case_freq": 0.4,
+      "total_freq": 12.0,
+      "total_wt": 1800.0,
+      "batching_wt": 0.0,
+      "prioritization_wt": 0.0,
+      "contention_wt": 0.0,
+      "unavailability_wt": 0.0,
+      "extraneous_wt": 1800.0,
+      "cte_impact_total_wt": 0.4539939332659252,
+      "cte_impact": {
+        "batching_impact": 0.4494494494494494,
+        "contention_impact": 0.4494494494494494,
+        "prioritization_impact": 0.4494494494494494,
+        "unavailability_impact": 0.4494494494494494,
+        "extraneous_impact": 0.4539939332659252
+      },
+      "wt_by_resource": [
+        {
+          "source_resource": "Carmine",
+          "target_resource": "Carmine",
+          "case_freq": 0.4,
+          "total_freq": 6.0,
+          "total_wt": 1800.0,
+          "batching_wt": 0.0,
+          "prioritization_wt": 0.0,
+          "contention_wt": 0.0,
+          "unavailability_wt": 0.0,
+          "extraneous_wt": 1800.0
+        },
+        {
+          "source_resource": "Dom",
+          "target_resource": "Dom",
+          "case_freq": 0.4,
+          "total_freq": 6.0,
+          "total_wt": 0.0,
+          "batching_wt": 0.0,
+          "prioritization_wt": 0.0,
+          "contention_wt": 0.0,
+          "unavailability_wt": 0.0,
+          "extraneous_wt": 0.0
+        }
+      ]
+    },
+    {
+      "source_activity": "E",
+      "target_activity": "F",
+      "case_freq": 0.2,
+      "total_freq": 3.0,
+      "total_wt": 0.0,
+      "batching_wt": 0.0,
+      "prioritization_wt": 0.0,
+      "contention_wt": 0.0,
+      "unavailability_wt": 0.0,
+      "extraneous_wt": 0.0,
+      "cte_impact_total_wt": 0.4494494494494494,
+      "cte_impact": {
+        "batching_impact": 0.4494494494494494,
+        "contention_impact": 0.4494494494494494,
+        "prioritization_impact": 0.4494494494494494,
+        "unavailability_impact": 0.4494494494494494,
+        "extraneous_impact": 0.4494494494494494
+      },
+      "wt_by_resource": [
+        {
+          "source_resource": "Anya",
+          "target_resource": "Anya",
+          "case_freq": 0.2,
+          "total_freq": 3.0,
+          "total_wt": 0.0,
+          "batching_wt": 0.0,
+          "prioritization_wt": 0.0,
+          "contention_wt": 0.0,
+          "unavailability_wt": 0.0,
+          "extraneous_wt": 0.0
+        }
+      ]
+    },
+    {
+      "source_activity": "F",
+      "target_activity": "G",
+      "case_freq": 0.2,
+      "total_freq": 3.0,
+      "total_wt": 5400.0,
+      "batching_wt": 0.0,
+      "prioritization_wt": 0.0,
+      "contention_wt": 0.0,
+      "unavailability_wt": 5400.0,
+      "extraneous_wt": 0.0,
+      "cte_impact_total_wt": 0.4633642930856553,
+      "cte_impact": {
+        "batching_impact": 0.4494494494494494,
+        "contention_impact": 0.4494494494494494,
+        "prioritization_impact": 0.4494494494494494,
+        "unavailability_impact": 0.4633642930856553,
+        "extraneous_impact": 0.4494494494494494
+      },
+      "wt_by_resource": [
+        {
+          "source_resource": "Anya",
+          "target_resource": "Marcus",
+          "case_freq": 0.2,
+          "total_freq": 3.0,
+          "total_wt": 5400.0,
+          "batching_wt": 0.0,
+          "prioritization_wt": 0.0,
+          "contention_wt": 0.0,
+          "unavailability_wt": 5400.0,
+          "extraneous_wt": 0.0
+        }
+      ]
+    }
+  ]
+}

@@ -36,6 +36,7 @@ func (app *Application) runAnalysis(ctx context.Context, eventLogName string, jo
 	go func() {
 		select {
 		case <-ctx.Done():
+			// NOTE: Windows specific code. Not sure if it kills child processes
 			if err = cmd.Process.Kill(); err != nil {
 				app.logger.Printf("Error cancelling job: %s", err.Error())
 			}

@@ -241,31 +241,25 @@ func (app *Application) prepareJobResult(job *model.Job) (*model.JobResult, erro
 
 	const (
 		reportSuffixJSON = "_transitions_report.json"
-		cteSuffix        = "_process_cte_impact.json"
 	)
 
 	eventLogName := path.Base(job.EventLogURL.String())
 	eventLogExt := path.Ext(eventLogName)
-
-	// prepare result
 	resultName := strings.TrimSuffix(eventLogName, eventLogExt) + reportSuffixJSON
 	resultPath := path.Join(job.Dir, resultName)
-	result := model.JobResult{}
-	if err := readJSON(resultPath, &result, app.logger); err != nil {
+
+	result, err := app.jobResultFromPath(resultPath)
+	if err != nil {
 		return nil, fmt.Errorf("error reading result: %s", err.Error())
 	}
 
-	// assign CTE impact
-	cteName := strings.TrimSuffix(eventLogName, eventLogExt) + cteSuffix
-	ctePath := path.Join(job.Dir, cteName)
-	cteImpact := model.JobCteImpact{}
-	if err := readJSON(ctePath, &cteImpact, app.logger); err != nil {
-		return nil, fmt.Errorf("error reading CTE impact: %s", err.Error())
-	} else {
-		result.CTEImpact = &cteImpact
-	}
+	return result, nil
+}
 
-	return &result, nil
+func (app *Application) jobResultFromPath(filePath string) (*model.JobResult, error) {
+	result := &model.JobResult{}
+	err := readJSON(filePath, result, app.logger)
+	return result, err
 }
 
 func (app *Application) newJobFromRequestBody(body io.ReadCloser) (*model.Job, error) {

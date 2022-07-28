@@ -8,6 +8,8 @@ import (
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"path"
+	"strings"
 
 	_ "embed"
 )
@@ -18,8 +20,9 @@ func Index(w http.ResponseWriter, r *http.Request) {
 
 func StaticAssets(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		app.logger.Printf("Serving %s", r.URL.Path[1:])
-		http.ServeFile(w, r, r.URL.Path[1:])
+		filePath := strings.TrimPrefix(r.URL.Path, "/assets/")
+		assetPath := path.Join(app.config.AssetsDir, filePath)
+		http.ServeFile(w, r, assetPath)
 	}
 }
 

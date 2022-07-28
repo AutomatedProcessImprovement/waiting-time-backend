@@ -15,4 +15,6 @@ type JobResultReportItem struct {
 	UnavailabilityWt float64                 `json:"unavailability_wt"`
 	ExtraneousWt     float64                 `json:"extraneous_wt"`
 	WtByResource     []JobResultResourceItem `json:"wt_by_resource"`
+	CTEImpactTotal   float64                 `json:"cte_impact_total"`
+	CTEImpact        *JobCteImpact           `json:"cte_impact"`
 }
