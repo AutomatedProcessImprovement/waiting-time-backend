@@ -50,7 +50,15 @@
           "prioritization_wt": 27000.0,
           "contention_wt": 48600.0,
           "unavailability_wt": 0.0,
-          "extraneous_wt": 0.0
+          "extraneous_wt": 0.0,
+          "cte_impact_total_wt": 0.918200408997955,
+          "cte_impact": {
+            "batching_impact": 0.49394939493949397,
+            "contention_impact": 0.6159122085048011,
+            "prioritization_impact": 0.5288574793875147,
+            "unavailability_impact": 0.4494494494494494,
+            "extraneous_impact": 0.4494494494494494
+          }
         }
       ]
     },
@@ -84,7 +92,15 @@
           "prioritization_wt": 0.0,
           "contention_wt": 0.0,
           "unavailability_wt": 0.0,
-          "extraneous_wt": 0.0
+          "extraneous_wt": 0.0,
+          "cte_impact_total_wt": 0.4494494494494494,
+          "cte_impact": {
+            "batching_impact": 0.4494494494494494,
+            "contention_impact": 0.4494494494494494,
+            "prioritization_impact": 0.4494494494494494,
+            "unavailability_impact": 0.4494494494494494,
+            "extraneous_impact": 0.4494494494494494
+          }
         },
         {
           "source_resource": "Anya",
@@ -96,7 +112,15 @@
           "prioritization_wt": 0.0,
           "contention_wt": 0.0,
           "unavailability_wt": 0.0,
-          "extraneous_wt": 0.0
+          "extraneous_wt": 0.0,
+          "cte_impact_total_wt": 0.4494494494494494,
+          "cte_impact": {
+            "batching_impact": 0.4494494494494494,
+            "contention_impact": 0.4494494494494494,
+            "prioritization_impact": 0.4494494494494494,
+            "unavailability_impact": 0.4494494494494494,
+            "extraneous_impact": 0.4494494494494494
+          }
         }
       ]
     },
@@ -130,7 +154,15 @@
           "prioritization_wt": 0.0,
           "contention_wt": 0.0,
           "unavailability_wt": 0.0,
-          "extraneous_wt": 1800.0
+          "extraneous_wt": 1800.0,
+          "cte_impact_total_wt": 0.4539939332659252,
+          "cte_impact": {
+            "batching_impact": 0.4494494494494494,
+            "contention_impact": 0.4494494494494494,
+            "prioritization_impact": 0.4494494494494494,
+            "unavailability_impact": 0.4494494494494494,
+            "extraneous_impact": 0.4539939332659252
+          }
         },
         {
           "source_resource": "Dom",
@@ -142,7 +174,15 @@
           "prioritization_wt": 0.0,
           "contention_wt": 0.0,
           "unavailability_wt": 0.0,
-          "extraneous_wt": 0.0
+          "extraneous_wt": 0.0,
+          "cte_impact_total_wt": 0.4494494494494494,
+          "cte_impact": {
+            "batching_impact": 0.4494494494494494,
+            "contention_impact": 0.4494494494494494,
+            "prioritization_impact": 0.4494494494494494,
+            "unavailability_impact": 0.4494494494494494,
+            "extraneous_impact": 0.4494494494494494
+          }
         }
       ]
     },
@@ -176,7 +216,15 @@
           "prioritization_wt": 0.0,
           "contention_wt": 0.0,
           "unavailability_wt": 0.0,
-          "extraneous_wt": 0.0
+          "extraneous_wt": 0.0,
+          "cte_impact_total_wt": 0.4494494494494494,
+          "cte_impact": {
+            "batching_impact": 0.4494494494494494,
+            "contention_impact": 0.4494494494494494,
+            "prioritization_impact": 0.4494494494494494,
+            "unavailability_impact": 0.4494494494494494,
+            "extraneous_impact": 0.4494494494494494
+          }
         }
       ]
     },
@@ -210,7 +258,15 @@
           "prioritization_wt": 0.0,
           "contention_wt": 0.0,
           "unavailability_wt": 5400.0,
-          "extraneous_wt": 0.0
+          "extraneous_wt": 0.0,
+          "cte_impact_total_wt": 0.4633642930856553,
+          "cte_impact": {
+            "batching_impact": 0.4494494494494494,
+            "contention_impact": 0.4494494494494494,
+            "prioritization_impact": 0.4494494494494494,
+            "unavailability_impact": 0.4633642930856553,
+            "extraneous_impact": 0.4494494494494494
+          }
         }
       ]
     }

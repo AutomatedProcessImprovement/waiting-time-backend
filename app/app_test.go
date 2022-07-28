@@ -49,6 +49,10 @@ func Test_jobResultFromPath(t *testing.T) {
 			if result.Report[0].CTEImpact == nil {
 				t.Fatal("CTEImpactPerWt is nil")
 			}
+
+			if result.Report[0].WtByResource[0].CTEImpact == nil {
+				t.Fatal("CTEImpactPerWt is nil")
+			}
 		})
 	}
 }

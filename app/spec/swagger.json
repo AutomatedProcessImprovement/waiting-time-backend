@@ -489,6 +489,9 @@
           "format": "double",
           "x-go-name": "ContentionWt"
         },
+        "cte_impact": {
+          "$ref": "#/definitions/JobCteImpact"
+        },
         "extraneous_wt": {
           "type": "number",
           "format": "double",
