@@ -65,6 +65,24 @@
             }
           }
         }
+      },
+      "delete": {
+        "summary": "Delete all non-running jobs. If a job is running, it returns an error. Cancel the running jobs manually before deleting them.",
+        "operationId": "deleteJobs",
+        "responses": {
+          "200": {
+            "description": "ApiJobsResponse",
+            "schema": {
+              "$ref": "#/definitions/ApiJobsResponse"
+            }
+          },
+          "default": {
+            "description": "ApiResponseError",
+            "schema": {
+              "$ref": "#/definitions/ApiResponseError"
+            }
+          }
+        }
       }
     },
     "/jobs/{id}": {

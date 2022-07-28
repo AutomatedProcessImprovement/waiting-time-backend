@@ -58,6 +58,14 @@ func (app *Application) initializeRouter() {
 		},
 
 		Route{
+			"DeleteJobs",
+			"DELETE",
+			"/jobs",
+			"",
+			DeleteJobs(app),
+		},
+
+		Route{
 			"GetJobs",
 			"GET",
 			"/jobs",

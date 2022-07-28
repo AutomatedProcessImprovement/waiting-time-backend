@@ -248,6 +248,40 @@ func GetJobs(app *Application) http.HandlerFunc {
 	}
 }
 
+// swagger:route DELETE /jobs deleteJobs
+//
+// Delete all non-running jobs. If a job is running, it returns an error. Cancel the running jobs manually before deleting them.
+//
+// ---
+// Responses:
+//   default: ApiResponseError
+//   200: ApiJobsResponse
+func DeleteJobs(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := app.queue.Clear()
+		if err != nil {
+			message := fmt.Sprintf("failed to clear the queue; %s", err)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = app.SaveQueue(); err != nil {
+			message := fmt.Sprintf("failed to save the queue; %s", err)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		if err = app.LoadQueue(); err != nil {
+			message := fmt.Sprintf("failed to load the queue; %s", err)
+			reply(w, http.StatusInternalServerError, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+
+		apiResponse := model.ApiJobsResponse{Jobs: app.queue.Jobs}
+		reply(w, http.StatusOK, apiResponse, app.logger)
+	}
+}
+
 func reply(w http.ResponseWriter, statusCode int, response interface{}, logger *log.Logger) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(statusCode)

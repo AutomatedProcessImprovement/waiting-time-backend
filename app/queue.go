@@ -96,6 +96,31 @@ func (q *Queue) Next() *model.Job {
 	return nil
 }
 
+func (q *Queue) Clear() error {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	runningJobsCount := 0
+
+	for _, j := range q.Jobs {
+		if j == nil {
+			continue
+		}
+
+		if j.Status == model.JobStatusRunning {
+			runningJobsCount++
+		}
+	}
+
+	if runningJobsCount > 0 {
+		return fmt.Errorf("cannot clear queue while there are %d running jobs", runningJobsCount)
+	}
+
+	q.Jobs = []*model.Job{}
+
+	return nil
+}
+
 func (q *Queue) sort() {
 	q.lock.Lock()
 	defer q.lock.Unlock()
