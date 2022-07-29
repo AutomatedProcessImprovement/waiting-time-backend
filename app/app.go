@@ -83,18 +83,27 @@ func (app *Application) AddJob(job *model.Job) error {
 	return app.queue.Add(job)
 }
 
+// ProcessQueue should be started in a separate goroutine to run the queue processing alongside the web server.
+// It checks for any pending job and process one if available. It also saves the queue to disk when processing is done,
+// and clears old records periodically.
 func (app *Application) ProcessQueue() {
 	app.logger.Printf("Queue processing started")
 
 	for {
+		// empties queue and disk monthly
+		if err := app.queue.ClearOld(-24 * 31 * time.Hour); err != nil {
+			app.logger.Printf("Error clearing old jobs: %s", err.Error())
+		}
+
+		// checks if there are jobs in the queue
 		job := app.queue.Next()
 		if job == nil {
 			time.Sleep(app.config.QueueSleepTime)
 			continue
 		}
 
+		// executes the job and saves the result on disk
 		app.processJob(job)
-
 		if err := app.SaveQueue(); err != nil {
 			app.logger.Printf("error saving queue: %s", err.Error())
 		}

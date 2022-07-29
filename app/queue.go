@@ -3,8 +3,10 @@ package app
 import (
 	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+	"os"
 	"sort"
 	"sync"
+	"time"
 )
 
 type Queue struct {
@@ -36,21 +38,33 @@ func (q *Queue) Add(job *model.Job) error {
 	return nil
 }
 
-// Remove removes a job from the queue if it finds one.
-func (q *Queue) Remove(job *model.Job) {
+// Remove removes a job from the queue if it finds one. It also can remove files related to the job.
+func (q *Queue) Remove(job *model.Job, removeFiles bool) error {
 	if job == nil {
-		return
+		return nil
 	}
 
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	for i, j := range q.Jobs {
-		if j == job {
-			q.Jobs = append(q.Jobs[:i], q.Jobs[i+1:]...)
-			return
+	var newJobs []*model.Job
+	for _, j := range q.Jobs {
+		if j.ID == job.ID {
+			continue
 		}
+		newJobs = append(newJobs, j)
 	}
+	q.Jobs = newJobs
+
+	if removeFiles {
+		if job.Dir == "" {
+			return nil
+		}
+
+		return os.RemoveAll(job.Dir)
+	}
+
+	return nil
 }
 
 // FindByID finds a job by its ID.
@@ -96,10 +110,58 @@ func (q *Queue) Next() *model.Job {
 	return nil
 }
 
+// Clear empties the queue and removes related disk data.
 func (q *Queue) Clear() error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
+	runningJobsCount := q.countRunningJobs()
+	if q.countRunningJobs() > 0 {
+		return fmt.Errorf("cannot clear queue while there are %d running jobs", runningJobsCount)
+	}
+
+	for _, j := range q.Jobs {
+		if j == nil {
+			continue
+		}
+
+		if j.Dir == "" {
+			continue
+		}
+
+		if err := os.RemoveAll(j.Dir); err != nil {
+			return fmt.Errorf("cannot remove job's [%s] folder: %s", j.ID, err)
+		}
+	}
+
+	q.Jobs = []*model.Job{}
+
+	return nil
+}
+
+// ClearOld removes jobs older than a given time from the queue and disk. Given duration should be negative to represent
+// a time in the past.
+func (q *Queue) ClearOld(d time.Duration) error {
+	if q == nil {
+		return fmt.Errorf("queue is nil")
+	}
+
+	for _, j := range q.Jobs {
+		if j == nil {
+			continue
+		}
+
+		if j.CreatedAt.Before(time.Now().Add(d)) {
+			if err := q.Remove(j, true); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (q *Queue) countRunningJobs() int {
 	runningJobsCount := 0
 
 	for _, j := range q.Jobs {
@@ -111,14 +173,7 @@ func (q *Queue) Clear() error {
 			runningJobsCount++
 		}
 	}
-
-	if runningJobsCount > 0 {
-		return fmt.Errorf("cannot clear queue while there are %d running jobs", runningJobsCount)
-	}
-
-	q.Jobs = []*model.Job{}
-
-	return nil
+	return runningJobsCount
 }
 
 func (q *Queue) sort() {
