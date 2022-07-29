@@ -17,20 +17,55 @@
   "host": "193.40.11.233",
   "basePath": "/",
   "paths": {
+    "/callback": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "summary": "Sample endpoint that receives a callback from the analysis service and responds with a 200 OK.",
+        "operationId": "postCallback",
+        "parameters": [
+          {
+            "description": "Callback request",
+            "name": "Body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ApiCallbackRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ApiCallbackRequest"
+            }
+          },
+          "default": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/ApiResponseError"
+            }
+          }
+        }
+      }
+    },
     "/jobs": {
       "get": {
         "summary": "List all jobs.",
         "operationId": "listJobs",
         "responses": {
           "default": {
-            "description": "ApiJobsResponse",
-            "schema": {
-              "$ref": "#/definitions/ApiJobsResponse"
-            }
+            "description": ""
           }
         }
       },
       "post": {
+        "description": "Submit a job for analysis. The endpoint accepts JSON and CSV request bodies. If the callback URL is provided, a GET\nrequest with empty body is sent to this endpoint when analysis is complete.",
         "consumes": [
           "application/json",
           "text/csv"
@@ -38,7 +73,6 @@
         "produces": [
           "application/json"
         ],
-        "summary": "Submit a job for analysis. The endpoint accepts JSON and CSV request bodies.",
         "operationId": "postJob",
         "parameters": [
           {
@@ -71,16 +105,10 @@
         "operationId": "deleteJobs",
         "responses": {
           "200": {
-            "description": "ApiJobsResponse",
-            "schema": {
-              "$ref": "#/definitions/ApiJobsResponse"
-            }
+            "description": ""
           },
           "default": {
-            "description": "ApiResponseError",
-            "schema": {
-              "$ref": "#/definitions/ApiResponseError"
-            }
+            "description": ""
           }
         }
       }
@@ -154,6 +182,25 @@
     }
   },
   "definitions": {
+    "ApiCallbackRequest": {
+      "type": "object",
+      "title": "ApiCallbackRequest is a body for POST request to the callback endpoint that was specified during job submission.",
+      "properties": {
+        "error": {
+          "type": "string",
+          "x-go-name": "Error"
+        },
+        "job_id": {
+          "type": "string",
+          "x-go-name": "JobID"
+        },
+        "status": {
+          "type": "string",
+          "x-go-name": "Status"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
     "ApiJobsResponse": {
       "type": "object",
       "title": "ApiJobsResponse is a response for multiple jobs operation.",

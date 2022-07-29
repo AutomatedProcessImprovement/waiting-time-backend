@@ -19,6 +19,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/model"
@@ -27,6 +28,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -132,6 +134,16 @@ func (app *Application) LoadQueue() error {
 }
 
 func (app *Application) processJob(job *model.Job) {
+	// post-work
+	defer func() {
+		job.SetCompletedAt(time.Now())
+
+		if err := app.callback(job); err != nil {
+			app.logger.Printf("Error calling callback endpoint for job %s: %s", job.ID, err.Error())
+			job.SetError(err)
+		}
+	}()
+
 	// check for a pending job
 	if job.Status != model.JobStatusPending {
 		err := fmt.Errorf("job is not pending")
@@ -240,9 +252,34 @@ func (app *Application) processJob(job *model.Job) {
 			}
 		}
 	}
+}
 
-	// post-work
-	job.SetCompletedAt(time.Now())
+func (app *Application) callback(job *model.Job) error {
+	if job.CallbackEndpointURL == nil {
+		return nil
+	}
+
+	payload := model.ApiCallbackRequest{
+		JobID:  job.ID,
+		Status: fmt.Sprintf("%s", job.Status),
+		Error:  job.Error,
+	}
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(payload); err != nil {
+		return err
+	}
+	r := bytes.NewReader(buf.Bytes())
+
+	req, err := http.NewRequest("POST", job.CallbackEndpointURL.String(), r)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	_, err = http.DefaultClient.Do(req)
+
+	return err
 }
 
 func (app *Application) prepareJobResult(job *model.Job) (*model.JobResult, error) {

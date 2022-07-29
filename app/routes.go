@@ -74,6 +74,14 @@ func (app *Application) initializeRouter() {
 		},
 
 		Route{
+			"SampleCallback",
+			"POST",
+			"/callback",
+			"",
+			SampleCallback(app),
+		},
+
+		Route{
 			"Index",
 			"GET",
 			"/",

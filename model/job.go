@@ -71,6 +71,10 @@ func (j *Job) Validate() error {
 		return fmt.Errorf("job event log is required")
 	}
 
+	if j.CreatedAt.IsZero() {
+		return fmt.Errorf("job .CreatedAt timestamp is required")
+	}
+
 	return nil
 }
 

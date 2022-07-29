@@ -37,13 +37,57 @@ func SwaggerJSON(app *Application) http.HandlerFunc {
 	}
 }
 
+// swagger:operation POST /callback postCallback
+//
+// Sample endpoint that receives a callback from the analysis service and responds with a 200 OK.
+//
+// ---
+// Consumes:
+//   - application/json
+//
+// Produces:
+//   - application/json
+//
+// Parameters:
+//   - name: Body
+//     in: body
+//     description: Callback request
+//     required: true
+//     schema:
+//       $ref: '#/definitions/ApiCallbackRequest'
+//
+// Responses:
+//   default:
+//     schema:
+//       $ref: '#/definitions/ApiResponseError'
+//   200:
+//     schema:
+//       $ref: '#/definitions/ApiCallbackRequest'
+func SampleCallback(app *Application) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var payload model.ApiCallbackRequest
+
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			message := fmt.Sprintf("invalid request body; %s", err)
+			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
+			return
+		}
+		_ = r.Body.Close()
+
+		app.logger.Printf("Received callback %v", payload)
+		reply(w, http.StatusOK, payload, app.logger)
+	}
+}
+
 // swagger:route GET /jobs listJobs
 //
 // List all jobs.
 //
 // ---
 // Responses:
-//   default: ApiJobsResponse
+//   default:
+//     schema:
+//       $ref: '#/definitions/ApiJobsResponse'
 func GetJobs(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		apiResponse := model.ApiJobsResponse{Jobs: app.queue.Jobs}
@@ -53,7 +97,8 @@ func GetJobs(app *Application) http.HandlerFunc {
 
 // swagger:operation POST /jobs postJob
 //
-// Submit a job for analysis. The endpoint accepts JSON and CSV request bodies.
+// Submit a job for analysis. The endpoint accepts JSON and CSV request bodies. If the callback URL is provided, a GET
+// request with empty body is sent to this endpoint when analysis is complete.
 //
 // ---
 // Consumes:
@@ -95,6 +140,7 @@ func PostJob(app *Application) http.HandlerFunc {
 			reply(w, http.StatusBadRequest, model.ApiResponseError{Error: message}, app.logger)
 			return
 		}
+		_ = r.Body.Close()
 
 		job, err := model.NewJob(apiRequest.EventLogURL_, apiRequest.CallbackEndpointURL_, app.config.ResultsDir)
 		if err != nil {
@@ -152,8 +198,12 @@ func PostJobFromBody(app *Application) http.HandlerFunc {
 //
 // ---
 // Responses:
-//   default: ApiResponseError
-//   200: ApiJobsResponse
+//   default:
+//     schema:
+//       $ref: '#/definitions/ApiResponseError'
+//   200:
+//     schema:
+//       $ref: '#/definitions/ApiJobsResponse'
 func DeleteJobs(app *Application) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := app.queue.Clear()
@@ -286,7 +336,7 @@ func reply(w http.ResponseWriter, statusCode int, response interface{}, logger *
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(statusCode)
 	err := json.NewEncoder(w).Encode(response)
-	checkError(err, "failed to encode ApiResponse", logger)
+	checkError(err, "failed to encode JSON response", logger)
 }
 
 func checkError(err error, message string, logger *log.Logger) {
