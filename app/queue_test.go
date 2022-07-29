@@ -33,11 +33,6 @@ func TestQueue_Clear(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "nil queue",
-			queue:   nil,
-			wantErr: false,
-		},
-		{
 			name: "valid queue with invalid job",
 			queue: &Queue{
 				Jobs: []*model.Job{
@@ -53,7 +48,7 @@ func TestQueue_Clear(t *testing.T) {
 				t.Errorf("Clear() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if len(tt.queue.Jobs) != 0 {
+			if tt.queue != nil && len(tt.queue.Jobs) != 0 {
 				t.Errorf("Clear() jobs = %v, want %v", len(tt.queue.Jobs), 0)
 			}
 
