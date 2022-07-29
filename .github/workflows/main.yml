@@ -30,8 +30,18 @@ jobs:
       - name: Install dependencies
         run: go get ${{ env.MODULE_NAME }}
 
-      - name: Test
-        run: go test -v ${{ env.MODULE_NAME }}/...
+      # Testing
+
+      - name: Run tests
+        run: go test -race -covermode atomic -coverprofile=covprofile ./...
+
+      - name: Install goveralls
+        run: go install github.com/mattn/goveralls@latest
+
+      - name: Send coverage
+        env:
+          COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+        run: goveralls -coverprofile=covprofile -service=github
 
       - name: Build binaries
         run: bash build_app.bash
