@@ -20,4 +20,5 @@ type JobResult struct {
 	Report                 []*JobResultReportItem `json:"report"`
 	ProcessCTE             float64                `json:"process_cte"`
 	CTEImpact              *JobCteImpact          `json:"cte_impact"`
+	PerCaseWT              []*JobPerCaseWT        `json:"per_case_wt"`
 }

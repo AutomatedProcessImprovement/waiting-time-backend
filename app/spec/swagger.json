@@ -365,6 +365,33 @@
       },
       "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
     },
+    "JobPerCaseWT": {
+      "type": "object",
+      "title": "JobPerCaseWT displays measures per case.",
+      "properties": {
+        "case:concept:name": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "CaseID"
+        },
+        "cte_impact": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "CTEImpact"
+        },
+        "pt_total": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "CasePT"
+        },
+        "wt_total": {
+          "type": "number",
+          "format": "double",
+          "x-go-name": "CaseWT"
+        }
+      },
+      "x-go-package": "github.com/AutomatedProcessImprovement/waiting-time-backend/model"
+    },
     "JobResult": {
       "description": "JobResult is a result of a job's execution which contains a summary of the transitions analysis report, a report\nitself and CTE impact of waiting times on the process level and on a transition level.",
       "type": "object",
@@ -396,6 +423,13 @@
           "type": "number",
           "format": "double",
           "x-go-name": "NumTransitions"
+        },
+        "per_case_wt": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/JobPerCaseWT"
+          },
+          "x-go-name": "PerCaseWT"
         },
         "process_cte": {
           "type": "number",
@@ -592,6 +626,9 @@
         },
         "Host": {
           "type": "string"
+        },
+        "OmitHost": {
+          "type": "boolean"
         },
         "Opaque": {
           "type": "string"
