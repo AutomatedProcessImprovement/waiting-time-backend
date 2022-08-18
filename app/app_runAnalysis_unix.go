@@ -5,6 +5,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/model"
@@ -20,12 +21,44 @@ func (app *Application) runAnalysis(ctx context.Context, eventLogName string, jo
 		return err
 	}
 
-	eventLogPath := path.Join(jobDir, eventLogName)
-	scriptName := "run_analysis.bash"
-	if app.config.DevelopmentMode {
-		scriptName = "run_analysis_dev.bash"
+	// custom column mapping if it was provided with the API request
+
+	var columnMapping string
+
+	if job.ColumnMapping != nil {
+		b, err := json.Marshal(job.ColumnMapping)
+		if err != nil {
+			return fmt.Errorf("error marshalling column mapping: %s", err.Error())
+		}
+		columnMapping = string(b)
 	}
-	args := fmt.Sprintf("bash %s %s %s", scriptName, eventLogPath, jobDir)
+
+	// analysis script name
+
+	var scriptName string
+
+	if app.config.DevelopmentMode {
+		if columnMapping == "" {
+			scriptName = "run_analysis_dev.bash"
+		} else {
+			scriptName = "run_analysis_dev_columns.bash"
+		}
+	} else if columnMapping == "" {
+		scriptName = "run_analysis.bash"
+	} else {
+		scriptName = "run_analysis_columns.bash"
+	}
+
+	// shell command
+
+	var args string
+
+	eventLogPath := path.Join(jobDir, eventLogName)
+	if columnMapping == "" {
+		args = fmt.Sprintf("bash %s %s %s", scriptName, eventLogPath, jobDir)
+	} else {
+		args = fmt.Sprintf("bash %s %s %s %q", scriptName, eventLogPath, jobDir, columnMapping)
+	}
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", args)
 
@@ -44,7 +77,7 @@ func (app *Application) runAnalysis(ctx context.Context, eventLogName string, jo
 		case <-ctx.Done():
 			// NOTE: unix specific code
 			if err = syscall.Kill(-1*cmd.Process.Pid, syscall.SIGKILL); err != nil {
-				app.logger.Printf("Error cancelling job: %s", err.Error())
+				app.logger.Printf("Cannot cancel the job: %s. But it might be okay if the job finished successfully", err.Error())
 			}
 		}
 	}()

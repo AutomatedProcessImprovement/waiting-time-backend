@@ -223,6 +223,13 @@
           "type": "string",
           "x-go-name": "CallbackEndpointURL"
         },
+        "column_mapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-go-name": "ColumnMapping"
+        },
         "event_log": {
           "type": "string",
           "x-go-name": "EventLogURL"
@@ -248,6 +255,13 @@
         "callback_endpoint": {
           "type": "string",
           "x-go-name": "CallbackEndpoint"
+        },
+        "column_mapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-go-name": "ColumnMapping"
         },
         "created_at": {
           "type": "string",
@@ -294,6 +308,13 @@
         "callback_endpoint": {
           "type": "string",
           "x-go-name": "CallbackEndpoint"
+        },
+        "column_mapping": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "x-go-name": "ColumnMapping"
         },
         "created_at": {
           "type": "string",

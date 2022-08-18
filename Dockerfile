@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /srv/webapp
 ADD build/linux-amd64/ .
 ADD run_analysis.bash .
+ADD run_analysis_columns.bash .
 
 EXPOSE 8080
 CMD ["/srv/webapp/waiting-time-backend", "-host", "localhost", "-port", "8080"]

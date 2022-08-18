@@ -8,10 +8,10 @@
 // Version: 1.0.0
 //
 // Consumes:
-//     - application/json
+//   - application/json
 //
 // Produces:
-// 		- application/json
+//   - application/json
 //
 // swagger:meta
 package app
@@ -310,7 +310,7 @@ func (app *Application) jobResultFromPath(filePath string) (*model.JobResult, er
 	return result, err
 }
 
-func (app *Application) newJobFromRequestBody(body io.ReadCloser) (*model.Job, error) {
+func (app *Application) newJobFromRequestBody(body io.ReadCloser, columnMapping map[string]string) (*model.Job, error) {
 	defer func() {
 		if err := body.Close(); err != nil {
 			app.logger.Printf("error closing request body: %s", err.Error())
@@ -375,5 +375,6 @@ func (app *Application) newJobFromRequestBody(body io.ReadCloser) (*model.Job, e
 		EventLogFromRequestBody: true,
 		CreatedAt:               time.Now(),
 		Dir:                     jobDir,
+		ColumnMapping:           columnMapping,
 	}, nil
 }

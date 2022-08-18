@@ -22,25 +22,26 @@ var (
 //
 // swagger:model
 type Job struct {
-	ID                      string     `json:"id,omitempty"`
-	Status                  JobStatus  `json:"status,omitempty"`
-	Error                   string     `json:"error,omitempty"`
-	Result                  *JobResult `json:"result,omitempty"`
-	ReportCSV               *URL       `json:"report_csv,omitempty"`
-	CallbackEndpoint        string     `json:"callback_endpoint,omitempty"`
-	CallbackEndpointURL     *URL       `json:"-"`
-	EventLog                string     `json:"event_log,omitempty"`
-	EventLogURL             *URL       `json:"-"`
-	EventLogMD5             string     `json:"event_log_md5,omitempty"`
-	EventLogFromRequestBody bool       `json:"-"`
-	CreatedAt               time.Time  `json:"created_at,omitempty"`
-	CompletedAt             *time.Time `json:"finished_at,omitempty"`
+	ID                      string            `json:"id,omitempty"`
+	Status                  JobStatus         `json:"status,omitempty"`
+	Error                   string            `json:"error,omitempty"`
+	Result                  *JobResult        `json:"result,omitempty"`
+	ReportCSV               *URL              `json:"report_csv,omitempty"`
+	CallbackEndpoint        string            `json:"callback_endpoint,omitempty"`
+	CallbackEndpointURL     *URL              `json:"-"`
+	EventLog                string            `json:"event_log,omitempty"`
+	EventLogURL             *URL              `json:"-"`
+	EventLogMD5             string            `json:"event_log_md5,omitempty"`
+	EventLogFromRequestBody bool              `json:"-"`
+	CreatedAt               time.Time         `json:"created_at,omitempty"`
+	CompletedAt             *time.Time        `json:"finished_at,omitempty"`
+	ColumnMapping           map[string]string `json:"column_mapping,omitempty"`
 
 	lock sync.Mutex
 	Dir  string `json:"-"`
 }
 
-func NewJob(eventLog *URL, callback *URL, basedir string) (*Job, error) {
+func NewJob(eventLog *URL, callback *URL, columnMapping map[string]string, basedir string) (*Job, error) {
 	id, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
@@ -55,6 +56,7 @@ func NewJob(eventLog *URL, callback *URL, basedir string) (*Job, error) {
 		EventLogURL:         eventLog,
 		CreatedAt:           time.Now(),
 		Dir:                 path.Join(basedir, id.String()),
+		ColumnMapping:       columnMapping,
 	}, nil
 }
 

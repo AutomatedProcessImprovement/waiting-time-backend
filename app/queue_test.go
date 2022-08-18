@@ -12,7 +12,7 @@ func TestQueue_Clear(t *testing.T) {
 	const resultsDir = "../assets/results"
 	var rootFS = os.DirFS(resultsDir)
 
-	j, err := model.NewJob(nil, nil, resultsDir)
+	j, err := model.NewJob(nil, nil, nil, resultsDir)
 	if err != nil {
 		t.Fatal(err)
 	}
