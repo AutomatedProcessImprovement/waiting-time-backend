@@ -29,29 +29,13 @@
         "operationId": "postCallback",
         "parameters": [
           {
+            "$ref": "#/definitions/ApiCallbackRequest",
             "description": "Callback request",
             "name": "Body",
             "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ApiCallbackRequest"
-            }
+            "required": true
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/ApiCallbackRequest"
-            }
-          },
-          "default": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/ApiResponseError"
-            }
-          }
-        }
+        ]
       }
     },
     "/jobs": {
@@ -76,29 +60,13 @@
         "operationId": "postJob",
         "parameters": [
           {
+            "$ref": "#/definitions/ApiRequest",
             "description": "Description of a job",
             "name": "Body",
             "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ApiRequest"
-            }
+            "required": true
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/ApiSingleJobResponse"
-            }
-          },
-          "default": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/ApiResponseError"
-            }
-          }
-        }
+        ]
       },
       "delete": {
         "summary": "Delete all non-running jobs. If a job is running, it returns an error. Cancel the running jobs manually before deleting them.",
@@ -131,21 +99,7 @@
             "in": "path",
             "required": true
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/ApiSingleJobResponse"
-            }
-          },
-          "default": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/ApiResponseError"
-            }
-          }
-        }
+        ]
       }
     },
     "/jobs/{id}/cancel": {
@@ -163,21 +117,7 @@
             "in": "path",
             "required": true
           }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/ApiSingleJobResponse"
-            }
-          },
-          "default": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/ApiResponseError"
-            }
-          }
-        }
+        ]
       }
     }
   },
@@ -390,7 +330,7 @@
       "type": "object",
       "title": "JobPerCaseWT displays measures per case.",
       "properties": {
-        "case:concept:name": {
+        "case_id": {
           "type": "number",
           "format": "double",
           "x-go-name": "CaseID"
