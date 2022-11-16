@@ -4,7 +4,7 @@ package model
 //
 // swagger:model
 type JobPerCaseWT struct {
-	CaseID    float64 `json:"case_id"`
+	CaseID    string  `json:"case_id"`
 	CasePT    float64 `json:"pt_total"`
 	CaseWT    float64 `json:"wt_total"`
 	CTEImpact float64 `json:"cte_impact"`

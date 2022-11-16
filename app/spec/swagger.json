@@ -331,8 +331,7 @@
       "title": "JobPerCaseWT displays measures per case.",
       "properties": {
         "case_id": {
-          "type": "number",
-          "format": "double",
+          "type": "string",
           "x-go-name": "CaseID"
         },
         "cte_impact": {
