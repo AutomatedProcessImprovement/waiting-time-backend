@@ -8,6 +8,8 @@ Use `deploy.bash` script to set up and launch the production deployment. SSH acc
 
 Use `docker_install.bash` to install Docker in production.
 
+**NB**: AppArmor causes problems with Docker, see more at https://forums.docker.com/t/can-not-stop-docker-container-permission-denied-error/41142. It may interfere with the container management and block the access to containers, so a root user can't stop or remove running containers. The solution is provided in the link. 
+
 ## Local development
 
 Use `run_dev.bash` script to start from scratch. It does the following:
