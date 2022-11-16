@@ -81,6 +81,7 @@ func (q *Queue) FindByID(id string) *model.Job {
 	return nil
 }
 
+// FindByMD5 finds a job by the event log's MD5 hash. Returns nil if not found.
 func (q *Queue) FindByMD5(md5 string) *model.Job {
 	for _, j := range q.Jobs {
 		if j == nil {

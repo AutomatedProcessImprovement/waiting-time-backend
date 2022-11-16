@@ -26,7 +26,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -182,7 +181,9 @@ func (app *Application) processJob(job *model.Job) {
 
 		// if the log has been processed before, skip analysis and assign the result to the job
 		foundJob := app.queue.FindByMD5(job.EventLogMD5)
-		if foundJob != nil && foundJob.ID != job.ID && foundJob.Status != model.JobStatusPending {
+		if foundJob != nil && foundJob.ID != job.ID &&
+			foundJob.Status != model.JobStatusPending &&
+			foundJob.Status != model.JobStatusFailed { // allow re-processing of failed jobs
 			app.logger.Printf("Job %s skipped; log has been processed before", job.ID)
 			job.SetStatus(model.JobStatusDuplicate)
 			job.SetResult(foundJob.Result)
@@ -317,7 +318,7 @@ func (app *Application) newJobFromRequestBody(body io.ReadCloser, columnMapping 
 		}
 	}()
 
-	bodyBytes, err := ioutil.ReadAll(body)
+	bodyBytes, err := io.ReadAll(body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading request body: %s", err.Error())
 	}
