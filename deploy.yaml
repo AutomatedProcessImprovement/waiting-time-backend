@@ -1,0 +1,34 @@
+- name: Deploy waiting-time-backend
+  hosts: main
+  remote_user: github-actions
+  vars:
+    deployment_dir: /home/ihar/deployments/waiting-time-backend
+
+  tasks:
+    - name: Install Docker to Python
+      pip:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - docker
+        - docker-compose
+
+    - name: Copy configuration files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ deployment_dir }}"
+        mode: 0644
+      with_items:
+        - docker-compose.yml
+        - nginx.conf
+        - env.production
+
+    - name: Pull updated Docker images
+      community.docker.docker_compose:
+        project_src: "{{ deployment_dir }}"
+        project_name: waiting-time-backend
+        env_file: "{{ deployment_dir }}/env.production"
+        pull: yes
+        build: no
+        remove_orphans: yes
+        remove_volumes: yes

@@ -65,7 +65,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: ${{ env.DOCKERHUB_REPO }}:latest
+          tags: ${{ env.DOCKERHUB_REPO }}:latest, ${{ env.DOCKERHUB_REPO }}:${{ github.sha }}
           file: Dockerfile
           context: .
           platforms: linux/amd64,linux/arm64
@@ -91,3 +91,29 @@ jobs:
         with:
           name: windows-amd64.zip
           path: build/windows-amd64.zip
+
+  deployment:
+    depends-on: build
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set up Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip
+          sudo pip3 install ansible
+          ansible --version
+
+      - name: Deploy waiting-time-backend
+        uses: dawidd6/action-ansible-playbook@v2
+        with:
+          playbook: deploy.yaml
+          inventory: hosts.yaml
+          key: ${{ secrets.GITHUB_ACTIONS_USER_PRIVATE_KEY }}
+

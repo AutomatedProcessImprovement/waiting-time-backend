@@ -1,0 +1,4 @@
+etais:
+  hosts:
+    main:
+      ansible_host: simodtesting.cloud.ut.ee
