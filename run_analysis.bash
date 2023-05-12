@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-source /usr/src/app/venv/bin/activate
-wta --log_path "$1" --output_dir "$2"
+cd /usr/src/app
+poetry run wta --log_path "$1" --output_dir "$2"
