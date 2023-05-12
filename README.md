@@ -1,6 +1,6 @@
 # Backend Web Service for Waiting Time Analysis CLI Tool
 
-![CI Status](https://github.com/AutomatedProcessImprovement/waiting-time-backend/actions/workflows/main.yml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/AutomatedProcessImprovement/waiting-time-backend/badge.svg?branch=main)](https://coveralls.io/github/AutomatedProcessImprovement/waiting-time-backend?branch=main) [![Go Reference](https://pkg.go.dev/badge/github.com/AutomatedProcessImprovement/waiting-time-backend.svg)](https://pkg.go.dev/github.com/AutomatedProcessImprovement/waiting-time-backend)
+![CI Status](https://github.com/AutomatedProcessImprovement/waiting-time-backend/actions/workflows/build.yaml/badge.svg) [![Coverage Status](https://coveralls.io/repos/github/AutomatedProcessImprovement/waiting-time-backend/badge.svg?branch=main)](https://coveralls.io/github/AutomatedProcessImprovement/waiting-time-backend?branch=main) [![Go Reference](https://pkg.go.dev/badge/github.com/AutomatedProcessImprovement/waiting-time-backend.svg)](https://pkg.go.dev/github.com/AutomatedProcessImprovement/waiting-time-backend)
 
 ## Deployment
 

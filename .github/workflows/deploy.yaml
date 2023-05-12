@@ -1,0 +1,32 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deployment:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set up Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip
+          sudo pip3 install ansible
+          ansible --version
+
+      - name: Deploy waiting-time-backend
+        uses: dawidd6/action-ansible-playbook@v2
+        with:
+          playbook: deploy.yaml
+          inventory: hosts.yaml
+          directory: ./
+          key: ${{ secrets.GITHUB_ACTIONS_USER_PRIVATE_KEY }}
+
