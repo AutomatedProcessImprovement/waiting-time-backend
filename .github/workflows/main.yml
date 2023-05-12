@@ -93,7 +93,7 @@ jobs:
           path: build/windows-amd64.zip
 
   deployment:
-    depends-on: build
+    needs: build
     runs-on: ubuntu-latest
     environment: production
     if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
