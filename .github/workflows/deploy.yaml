@@ -5,7 +5,6 @@ on:
 
 jobs:
   deployment:
-    needs: build
     runs-on: ubuntu-latest
     environment: production
     if: github.ref == 'refs/heads/main'
