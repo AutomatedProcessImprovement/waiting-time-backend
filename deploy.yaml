@@ -23,7 +23,7 @@
         - nginx.conf
         - env.production
 
-    - name: Pull updated Docker images
+    - name: Pull updated Docker images and restart containers
       community.docker.docker_compose:
         project_src: "{{ deployment_dir }}"
         project_name: waiting-time-backend
@@ -32,3 +32,5 @@
         build: no
         remove_orphans: yes
         remove_volumes: yes
+        state: started
+        restarted: yes
