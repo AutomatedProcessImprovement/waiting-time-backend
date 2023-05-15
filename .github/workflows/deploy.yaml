@@ -16,9 +16,10 @@ jobs:
 
       - name: Set up Ansible
         run: |
+          sudo rm -rf /usr/lib/python3/dist-packages/OpenSSL
           sudo apt-get update
           sudo apt-get install -y python3-pip
-          pip3 install ansible docker docker-compose pyyaml pyopenssl
+          pip3 install -U pip ansible docker docker-compose pyyaml pyopenssl
           ansible --version
           docker --version
 
