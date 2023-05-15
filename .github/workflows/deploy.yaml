@@ -32,7 +32,6 @@ jobs:
         with:
           key: "${{ secrets.SSH_PRIVATE_KEY }}"
           name: "id_rsa-ga"
-          known_hosts: "${{ secrets.KNOWN_HOSTS }}"
 
       - name: Deploy with Ansible
         run: |
