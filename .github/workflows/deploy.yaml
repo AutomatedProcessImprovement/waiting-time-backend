@@ -24,10 +24,17 @@ jobs:
       - name: Save private key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.GITHUB_ACTIONS_USER_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+      
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: "${{ secrets.SSH_PRIVATE_KEY }}"
+          name: "id_rsa-ga"
+          known_hosts: "${{ secrets.KNOWN_HOSTS }}"
 
       - name: Deploy with Ansible
         run: |
-          ansible-playbook -i hosts.yaml --private-key ~/.ssh/id_rsa deploy.yaml
+          ansible-playbook -i hosts.yaml --private-key ~/.ssh/id_rsa-ga deploy.yaml
 

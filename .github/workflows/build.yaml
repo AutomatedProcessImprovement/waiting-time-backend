@@ -5,12 +5,14 @@ on:
   push:
     branches:
       - main
+    paths:
       - Dockerfile
       - ./**/*.go
       - ./.github/workflows/build.yaml
   pull_request:
     branches:
       - main
+    paths:
       - Dockerfile
       - ./**/*.go
       - ./.github/workflows/build.yaml
