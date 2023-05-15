@@ -1,6 +1,6 @@
 - name: Deploy waiting-time-backend
   hosts: main
-  remote_user: github-actions
+  remote_user: ihar
   vars:
     deployment_dir: /home/ihar/deployments/waiting-time-backend
 
