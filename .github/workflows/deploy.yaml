@@ -18,7 +18,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-pip
-          pip3 install ansible docker docker-compose pyyaml
+          pip3 install ansible docker docker-compose pyyaml pyopenssl
           ansible --version
           docker --version
 
