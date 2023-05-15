@@ -16,10 +16,11 @@ jobs:
 
       - name: Set up Ansible
         run: |
-          sudo apt update
-          sudo apt install -y python3-pip docker.io
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
           pip3 install ansible docker docker-compose pyyaml
           ansible --version
+          docker --version
 
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
