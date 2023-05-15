@@ -21,11 +21,13 @@ jobs:
           sudo pip3 install ansible
           ansible --version
 
-      - name: Deploy waiting-time-backend
-        uses: dawidd6/action-ansible-playbook@v2
-        with:
-          playbook: deploy.yaml
-          inventory: hosts.yaml
-          directory: ./
-          key: ${{ secrets.GITHUB_ACTIONS_USER_PRIVATE_KEY }}
+      - name: Save private key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.GITHUB_ACTIONS_USER_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Deploy with Ansible
+        run: |
+          ansible-playbook -i hosts.yaml --private-key ~/.ssh/id_rsa deploy.yaml
 
