@@ -18,7 +18,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y python3-pip
-          sudo pip3 install ansible
+          pip3 install ansible docker docker-compose
           ansible --version
 
       - name: Save private key
