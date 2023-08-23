@@ -1,4 +1,4 @@
-FROM nokal/waiting-time-analysis
+FROM nokal/waiting-time-analysis:1.3.6
 
 RUN apt-get update && apt-get install -y \
     curl \
