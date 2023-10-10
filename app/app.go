@@ -19,18 +19,23 @@ package app
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/model"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	_ "github.com/lib/pq"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -243,12 +248,12 @@ func (app *Application) processJob(job *model.Job) {
 				job.SetReportCSV(&model.URL{URL: reportURL})
 
 				// assign result
-				result, err := app.prepareJobResult(job)
+				_, err = app.prepareJobResult(job)
 				if err != nil {
 					app.logger.Printf("error preparing result: %s", err.Error())
 					job.SetError(err)
 				} else {
-					job.SetResult(result)
+					//job.SetResult(result)
 				}
 			}
 		}
@@ -283,32 +288,150 @@ func (app *Application) callback(job *model.Job) error {
 	return err
 }
 
-func (app *Application) prepareJobResult(job *model.Job) (*model.JobResult, error) {
+func (app *Application) prepareJobResult(job *model.Job) ([]model.JobResultItem, error) {
 	if job.EventLogURL == nil {
 		return nil, fmt.Errorf("job has no event log")
 	}
 
 	const (
-		reportSuffixJSON = "_transitions_report.json"
+		reportSuffixCSV = "_transitions_report.csv"
 	)
 
 	eventLogName := path.Base(job.EventLogURL.String())
 	eventLogExt := path.Ext(eventLogName)
-	resultName := strings.TrimSuffix(eventLogName, eventLogExt) + reportSuffixJSON
+	resultName := strings.TrimSuffix(eventLogName, eventLogExt) + reportSuffixCSV
 	resultPath := path.Join(job.Dir, resultName)
 
-	result, err := app.jobResultFromPath(resultPath)
+	results, err := app.jobResultsFromPath(resultPath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading result: %s", err.Error())
 	}
 
-	return result, nil
+	// Save results to database
+	err = app.storeJobResultsInDatabase(job.ID, results)
+	if err != nil {
+		return nil, fmt.Errorf("error storing results in database: %s", err.Error())
+	}
+
+	return results, nil
 }
 
-func (app *Application) jobResultFromPath(filePath string) (*model.JobResult, error) {
-	result := &model.JobResult{}
-	err := readJSON(filePath, result, app.logger)
-	return result, err
+func (app *Application) jobResultsFromPath(filePath string) ([]model.JobResultItem, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(records) < 1 {
+		return nil, errors.New("empty CSV")
+	}
+
+	var results []model.JobResultItem
+	timeLayout := "2006-01-02 15:04:05-07:00"
+
+	for _, record := range records[1:] {
+		startTime, _ := time.Parse(timeLayout, record[0])
+		endTime, _ := time.Parse(timeLayout, record[1])
+		wtTotal, _ := strconv.ParseFloat(record[7], 64)
+		wtContention, _ := strconv.ParseFloat(record[8], 64)
+		wtBatching, _ := strconv.ParseFloat(record[9], 64)
+		wtPrioritization, _ := strconv.ParseFloat(record[10], 64)
+		wtUnavailability, _ := strconv.ParseFloat(record[11], 64)
+		wtExtraneous, _ := strconv.ParseFloat(record[12], 64)
+
+		result := model.JobResultItem{
+			StartTime:           startTime,
+			EndTime:             endTime,
+			SourceActivity:      record[2],
+			SourceResource:      record[3],
+			DestinationActivity: record[4],
+			DestinationResource: record[5],
+			CaseID:              record[6],
+			WtTotal:             wtTotal,
+			WtContention:        wtContention,
+			WtBatching:          wtBatching,
+			WtPrioritization:    wtPrioritization,
+			WtUnavailability:    wtUnavailability,
+			WtExtraneous:        wtExtraneous,
+		}
+		results = append(results, result)
+	}
+
+	return results, nil
+}
+
+func sanitizeTableName(input string) string {
+	// This regex matches characters that are not alphanumeric
+	re := regexp.MustCompile(`[^a-zA-Z0-9]`)
+	return re.ReplaceAllString(input, "_")
+}
+
+func (app *Application) storeJobResultsInDatabase(jobID string, results []model.JobResultItem) error {
+	connStr := os.Getenv("DATABASE_URL")
+	if connStr == "" {
+		return errors.New("DATABASE_URL is not set")
+	}
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Create table
+	tableName := "result_" + sanitizeTableName(jobID)
+	createTableSQL := fmt.Sprintf(`
+        CREATE TABLE %s (
+            StartTime TIMESTAMP,
+            EndTime TIMESTAMP,
+            SourceActivity TEXT,
+            SourceResource TEXT,
+            DestinationActivity TEXT,
+            DestinationResource TEXT,
+            CaseID TEXT,
+            WtTotal FLOAT,
+            WtContention FLOAT,
+            WtBatching FLOAT,
+            WtPrioritization FLOAT,
+            WtUnavailability FLOAT,
+            WtExtraneous FLOAT
+        )
+    `, tableName)
+
+	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		return err
+	}
+
+	for _, result := range results {
+		insertSQL := fmt.Sprintf(`
+            INSERT INTO %s (
+                StartTime, EndTime, SourceActivity, SourceResource,
+                DestinationActivity, DestinationResource, CaseID,
+                WtTotal, WtContention, WtBatching, WtPrioritization,
+                WtUnavailability, WtExtraneous
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        `, tableName)
+
+		_, err = db.Exec(insertSQL,
+			result.StartTime, result.EndTime, result.SourceActivity, result.SourceResource,
+			result.DestinationActivity, result.DestinationResource, result.CaseID,
+			result.WtTotal, result.WtContention, result.WtBatching, result.WtPrioritization,
+			result.WtUnavailability, result.WtExtraneous,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (app *Application) newJobFromRequestBody(body io.ReadCloser, columnMapping map[string]string) (*model.Job, error) {

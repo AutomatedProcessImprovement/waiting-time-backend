@@ -1,10 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
+	"fmt"
 	"github.com/AutomatedProcessImprovement/waiting-time-backend/app"
 	"log"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -41,5 +44,24 @@ func main() {
 	router := a.GetRouter()
 	log.Printf("Server started at %s", addr)
 	log.Printf("Development mode: %v", config.DevelopmentMode)
+	// Database connection check.
+	connStr := os.Getenv("DATABASE_URL")
+
+	if connStr == "" {
+		log.Fatalf("DATABASE_URL is not set")
+	}
+
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatalf("Failed to open a DB connection: %v", err)
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		log.Fatalf("Failed to ping DB: %v", err)
+	}
+
+	fmt.Println("Successfully connected to the database!")
 	log.Fatal(http.ListenAndServe(addr, router))
 }
