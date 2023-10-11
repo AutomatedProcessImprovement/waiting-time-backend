@@ -5,14 +5,13 @@
     deployment_dir: /home/ihar/deployments/waiting-time-backend
 
   tasks:
-    - name: Install Docker and Docker Compose
+    - name: Install Docker to Python
       pip:
         name: "{{ item }}"
         state: present
-      loop:
+      with_items:
         - docker
         - docker-compose
-      become: yes
 
     - name: Copy configuration files
       copy:
