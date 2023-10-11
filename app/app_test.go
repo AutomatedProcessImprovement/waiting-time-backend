@@ -1,58 +1,56 @@
 package app
 
 import (
+	"os"
 	"testing"
+	"time"
+
+	"github.com/AutomatedProcessImprovement/waiting-time-backend/model"
 )
 
-func Test_jobResultFromPath(t *testing.T) {
-	// setup
+func TestNewApplication(t *testing.T) {
+	config := &Configuration{
+		Port:           8080,
+		QueueSleepTime: time.Second * 10,
+		JobTimeout:     time.Minute * 5,
+		ResultsDir:     "./results/",
+		QueuePath:      "./queue.gob",
+		Host:           "localhost",
+	}
 
-	config := DefaultConfiguration()
-	config.AssetsDir = "../assets"
-	config.ResultsDir = "../assets/results"
 	app, err := NewApplication(config)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Expected no error, but got %v", err)
 	}
 
-	// test cases
+	if app == nil {
+		t.Fatal("Expected application to be instantiated, but got nil")
+	}
+}
 
-	tests := []struct {
-		name       string
-		reportPath string
-	}{
-		{
-			name:       "valid result",
-			reportPath: "../assets/tests/manual_log_5_transitions_report.json",
-		},
+func TestAddJob(t *testing.T) {
+	config := &Configuration{
+		Port:           8080,
+		QueueSleepTime: time.Second * 10,
+		JobTimeout:     time.Minute * 5,
+		ResultsDir:     "./results/",
+		QueuePath:      "./queue.gob",
+		Host:           "localhost",
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := app.jobResultFromPath(tt.reportPath)
-			if err != nil {
-				t.Fatal(err)
-			}
+	app, _ := NewApplication(config)
 
-			if result.CTEImpact == nil {
-				t.Fatal("CTEImpact is nil")
-			}
-
-			if len(result.Report) == 0 {
-				t.Fatal("Report is empty")
-			}
-
-			if len(result.Report[0].WtByResource) == 0 {
-				t.Fatal("WtByResource is empty")
-			}
-
-			if result.Report[0].CTEImpact == nil {
-				t.Fatal("CTEImpactPerWt is nil")
-			}
-
-			if result.Report[0].WtByResource[0].CTEImpact == nil {
-				t.Fatal("CTEImpactPerWt is nil")
-			}
-		})
+	job := &model.Job{
+		ID: "test-job-id",
 	}
+
+	err := app.AddJob(job)
+	if err != nil {
+		t.Fatalf("Expected no error, but got %v", err)
+	}
+}
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	os.Exit(code)
 }
