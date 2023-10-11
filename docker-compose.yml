@@ -7,7 +7,10 @@ services:
       - ./assets:/srv/webapp/assets
     environment:
       WEBAPP_HOST: ${WEBAPP_HOST}
+      DATABASE_URL: ${DATABASE_URL}
     restart: always
+    depends_on:
+      - db
 
   swagger:
     image: swaggerapi/swagger-ui
@@ -29,3 +32,23 @@ services:
     depends_on:
       - web
       - swagger
+
+  db:
+    image: postgres:16.0
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    expose:
+      - 5432
+    ports:
+      - 5432:5432
+    restart: always
+
+  database-api:
+    build: ./database-api
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      - db
+    restart: always

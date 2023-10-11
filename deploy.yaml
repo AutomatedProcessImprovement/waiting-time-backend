@@ -28,6 +28,11 @@
         project_src: "{{ deployment_dir }}"
         project_name: waiting-time-backend
         env_file: "{{ deployment_dir }}/env.production"
+        environment:
+          DATABASE_URL: "{{ DATABASE_URL }}"
+          POSTGRES_DB: "{{ POSTGRES_DB }}"
+          POSTGRES_USER: "{{ POSTGRES_USER }}"
+          POSTGRES_PASSWORD: "{{ POSTGRES_PASSWORD }}"
         pull: yes
         build: no
         remove_orphans: yes
