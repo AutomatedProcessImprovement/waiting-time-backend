@@ -23,6 +23,12 @@
         - nginx.conf
         - env.production
 
+    - name: Copy database-api directory
+      ansible.builtin.copy:
+        src: ./database-api/
+        dest: "{{ deployment_dir }}/database-api"
+        mode: '0755'
+
     - name: Ensure DATABASE_URL is set in env.production
       ansible.builtin.lineinfile:
         path: "{{ deployment_dir }}/env.production"
