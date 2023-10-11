@@ -37,6 +37,8 @@ services:
     image: postgres:16.0
     volumes:
       - ./data:/var/lib/postgresql/data
+    env_file:
+      - .env
     expose:
       - 5432
     ports:
