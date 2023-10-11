@@ -32,5 +32,10 @@ jobs:
 
       - name: Deploy with Ansible
         run: |
-          ansible-playbook -i hosts.yaml --private-key ~/.ssh/id_rsa-ga deploy.yaml
+          ansible-playbook -i hosts.yaml --private-key ~/.ssh/id_rsa-ga deploy.yaml \
+          -e "DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+          -e "POSTGRES_DB=${{ secrets.POSTGRES_DB }}" \
+          -e "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" \
+          -e "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
+
 
