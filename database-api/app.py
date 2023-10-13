@@ -11,7 +11,7 @@ from pix_framework.io.event_log import EventLogIDs, read_csv_log
 from pix_framework.enhancement.start_time_estimator.config import Configuration, ConcurrencyOracleType, ReEstimationMethod, ResourceAvailabilityType
 from pix_framework.enhancement.start_time_estimator.estimator import StartTimeEstimator
 
-ALLOWED_ORIGINS = ["http://154.56.63.127:3000", "http://kronos.cloud.ut.ee"]
+ALLOWED_ORIGINS = ["*"]
 
 app = Flask(__name__)
 resources = {
