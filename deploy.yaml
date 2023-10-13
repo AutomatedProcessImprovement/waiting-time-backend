@@ -23,33 +23,39 @@
         - nginx.conf
         - env.production
 
+    - name: Copy env.production as .env
+      copy:
+        src: env.production
+        dest: "{{ deployment_dir }}/.env"
+        mode: 0644
+
     - name: Copy database-api directory
       ansible.builtin.copy:
         src: ./database-api/
         dest: "{{ deployment_dir }}/database-api"
         mode: '0755'
 
-    - name: Ensure DATABASE_URL is set in env.production
+    - name: Ensure DATABASE_URL is set in .env
       ansible.builtin.lineinfile:
-        path: "{{ deployment_dir }}/env.production"
+        path: "{{ deployment_dir }}/.env"
         regexp: '^DATABASE_URL='
         line: 'DATABASE_URL={{ DATABASE_URL }}'
 
-    - name: Ensure POSTGRES_DB is set in env.production
+    - name: Ensure POSTGRES_DB is set in .env
       ansible.builtin.lineinfile:
-        path: "{{ deployment_dir }}/env.production"
+        path: "{{ deployment_dir }}/.env"
         regexp: '^POSTGRES_DB='
         line: 'POSTGRES_DB={{ POSTGRES_DB }}'
 
-    - name: Ensure POSTGRES_USER is set in env.production
+    - name: Ensure POSTGRES_USER is set in .env
       ansible.builtin.lineinfile:
-        path: "{{ deployment_dir }}/env.production"
+        path: "{{ deployment_dir }}/.env"
         regexp: '^POSTGRES_USER='
         line: 'POSTGRES_USER={{ POSTGRES_USER }}'
 
-    - name: Ensure POSTGRES_PASSWORD is set in env.production
+    - name: Ensure POSTGRES_PASSWORD is set in .env
       ansible.builtin.lineinfile:
-        path: "{{ deployment_dir }}/env.production"
+        path: "{{ deployment_dir }}/.env"
         regexp: '^POSTGRES_PASSWORD='
         line: 'POSTGRES_PASSWORD={{ POSTGRES_PASSWORD }}'
 
@@ -57,7 +63,7 @@
       community.docker.docker_compose:
         project_src: "{{ deployment_dir }}"
         project_name: waiting-time-backend
-        env_file: "{{ deployment_dir }}/env.production"
+        env_file: "{{ deployment_dir }}/.env"
         pull: yes
         build: no
         remove_orphans: yes
