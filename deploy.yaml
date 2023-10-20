@@ -58,6 +58,12 @@
         regexp: '^POSTGRES_PASSWORD='
         line: 'POSTGRES_PASSWORD={{ POSTGRES_PASSWORD }}'
 
+    - name: Build the database-api Docker image
+      become: yes
+      command:
+        cmd: "docker-compose -f {{ deployment_dir }}/docker-compose.yml build database-api"
+        chdir: "{{ deployment_dir }}"    
+
     - name: Pull updated Docker images and restart containers
       community.docker.docker_compose:
         project_src: "{{ deployment_dir }}"
