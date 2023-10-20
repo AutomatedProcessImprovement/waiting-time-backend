@@ -134,7 +134,6 @@ def batching_strategies(jobid):
     return jsonify(batch_characteristics)
 
 
-
 @app.route('/overview/<jobid>', methods=['GET'])
 def overview(jobid):
     sanitized_jobid = DBHandler.sanitize_table_name(jobid)
