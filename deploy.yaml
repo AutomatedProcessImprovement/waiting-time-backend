@@ -29,11 +29,10 @@
         dest: "{{ deployment_dir }}/.env"
         mode: 0644
 
-    - name: Copy database-api directory
-      ansible.builtin.copy:
-        src: ./database-api/
-        dest: "{{ deployment_dir }}/database-api"
-        mode: '0755'
+  - name: Synchronize database-api directory
+    ansible.builtin.synchronize:
+      src: ./database-api/
+      dest: "{{ deployment_dir }}/database-api"
 
     - name: Ensure DATABASE_URL is set in .env
       ansible.builtin.lineinfile:
