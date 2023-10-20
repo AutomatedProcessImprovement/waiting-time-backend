@@ -59,9 +59,16 @@
         line: 'POSTGRES_PASSWORD={{ POSTGRES_PASSWORD }}'
 
     - name: Build the database-api Docker image
-      command:
-        cmd: "docker-compose -f {{ deployment_dir }}/docker-compose.yml build database-api"
-        chdir: "{{ deployment_dir }}"    
+      community.docker.docker_compose:
+        project_src: "{{ deployment_dir }}"
+        project_name: waiting-time-backend
+        env_file: "{{ deployment_dir }}/.env"
+        services:
+          - database-api
+        build: yes
+        pull: no
+        state: present
+        restarted: no 
 
     - name: Pull updated Docker images and restart containers
       community.docker.docker_compose:
