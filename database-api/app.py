@@ -3,7 +3,7 @@ import requests
 import os
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+# from flask_cors import CORS
 import psycopg2
 from psycopg2 import sql
 from pix_framework.discovery.batch_processing.batch_characteristics import discover_batch_processing_and_characteristics
@@ -11,26 +11,26 @@ from pix_framework.io.event_log import EventLogIDs, read_csv_log
 from pix_framework.enhancement.start_time_estimator.config import Configuration, ConcurrencyOracleType, ReEstimationMethod, ResourceAvailabilityType
 from pix_framework.enhancement.start_time_estimator.estimator import StartTimeEstimator
 
-ALLOWED_ORIGINS = ["*"]
+# ALLOWED_ORIGINS = ["*"]
 
 app = Flask(__name__)
-resources = {
-    r"/overview/*": {"origins": ALLOWED_ORIGINS},
-    r"/case_overview/*": {"origins": ALLOWED_ORIGINS},
-    r"/daily_summary/*": {"origins": ALLOWED_ORIGINS},
-    r"/activity_transitions/*": {"origins": ALLOWED_ORIGINS},
-    r"/activity_date_range_global/*": {"origins": ALLOWED_ORIGINS},
-    r"/activity_pairs/*": {"origins": ALLOWED_ORIGINS},
-    r"/activity_transitions_by_resource/*": {"origins": ALLOWED_ORIGINS},
-    r"/potential_cte/*": {"origins": ALLOWED_ORIGINS},
-    r"/cte_improvement/*": {"origins": ALLOWED_ORIGINS},
-    r"/wt_overview/*": {"origins": ALLOWED_ORIGINS},
-    r"/batching_strategies/*": {"origins": ALLOWED_ORIGINS},
-    r"/activity_wt/*": {"origins": ALLOWED_ORIGINS},
-    r"/activity_resource_wt/*": {"origins": ALLOWED_ORIGINS}
-}
+# resources = {
+#     r"/overview/*": {"origins": ALLOWED_ORIGINS},
+#     r"/case_overview/*": {"origins": ALLOWED_ORIGINS},
+#     r"/daily_summary/*": {"origins": ALLOWED_ORIGINS},
+#     r"/activity_transitions/*": {"origins": ALLOWED_ORIGINS},
+#     r"/activity_date_range_global/*": {"origins": ALLOWED_ORIGINS},
+#     r"/activity_pairs/*": {"origins": ALLOWED_ORIGINS},
+#     r"/activity_transitions_by_resource/*": {"origins": ALLOWED_ORIGINS},
+#     r"/potential_cte/*": {"origins": ALLOWED_ORIGINS},
+#     r"/cte_improvement/*": {"origins": ALLOWED_ORIGINS},
+#     r"/wt_overview/*": {"origins": ALLOWED_ORIGINS},
+#     r"/batching_strategies/*": {"origins": ALLOWED_ORIGINS},
+#     r"/activity_wt/*": {"origins": ALLOWED_ORIGINS},
+#     r"/activity_resource_wt/*": {"origins": ALLOWED_ORIGINS}
+# }
 
-CORS(app, resources=resources)
+# CORS(app, resources=resources)
 
 
 class DBHandler:
