@@ -25,7 +25,9 @@ resources = {
     r"/potential_cte/*": {"origins": ALLOWED_ORIGINS},
     r"/cte_improvement/*": {"origins": ALLOWED_ORIGINS},
     r"/wt_overview/*": {"origins": ALLOWED_ORIGINS},
-    r"/process_csv/*": {"origins": ALLOWED_ORIGINS}
+    r"/batching_strategies/*": {"origins": ALLOWED_ORIGINS},
+    r"/activity_wt/*": {"origins": ALLOWED_ORIGINS},
+    r"/activity_resource_wt/*": {"origins": ALLOWED_ORIGINS}
 }
 
 CORS(app, resources=resources)
@@ -63,8 +65,19 @@ class DBHandler:
             return None
 
 
-@app.route('/process_csv/<jobid>', methods=['GET'])
-def process_csv(jobid):
+@app.route('/batching_strategies/<jobid>', methods=['GET'])
+def batching_strategies(jobid):
+    # Fetch column_mapping first
+    job_url = f"http://154.56.63.127:8080/jobs/{jobid}"
+    response = requests.get(job_url)
+    
+    if response.status_code != 200:
+        return jsonify({"error": f"Failed to retrieve job details for jobid {jobid}"}), 500
+    
+    job_data = response.json()
+    column_mapping = job_data.get('column_mapping', {})
+
+    # Fetch the CSV
     csv_url = f"http://154.56.63.127:8080/assets/results/{jobid}/event_log.csv"
     response = requests.get(csv_url)
 
@@ -76,31 +89,26 @@ def process_csv(jobid):
     with open(csv_file, "w") as f:
         f.write(csv_data)
 
-    case_column = request.args.get('case', default='case')
-    activity_column = request.args.get('activity', default='activity')
-    start_time_column = request.args.get('start_timestamp', default='start_time')
-    end_time_column = request.args.get('end_timestamp', default='end_time')
-    resource_column = request.args.get('resource', default='resource')
-
+    # Process the CSV using column_mapping
     event_log = read_csv_log(
         log_path=csv_file,
         log_ids=EventLogIDs(
-            case=case_column,
-            activity=activity_column,
-            start_time=start_time_column,
-            end_time=end_time_column,
-            resource=resource_column,
+            case=column_mapping.get('case', 'case'),
+            activity=column_mapping.get('activity', 'activity'),
+            start_time=column_mapping.get('start_timestamp', 'start_time'),
+            end_time=column_mapping.get('end_timestamp', 'end_time'),
+            resource=column_mapping.get('resource', 'resource'),
         ),
         sort=False
     )
 
     configuration = Configuration(
         log_ids=EventLogIDs(
-            case=case_column,
-            activity=activity_column,
-            start_time=start_time_column,
-            end_time=end_time_column,
-            resource=resource_column,
+            case=column_mapping.get('case', 'case'),
+            activity=column_mapping.get('activity', 'activity'),
+            start_time=column_mapping.get('start_timestamp', 'start_time'),
+            end_time=column_mapping.get('end_timestamp', 'end_time'),
+            resource=column_mapping.get('resource', 'resource'),
         ),
         concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
         re_estimation_method=ReEstimationMethod.MODE,
@@ -109,22 +117,22 @@ def process_csv(jobid):
 
     print(configuration)
 
-    # Step 3: Process the data using your library/methods
     extended_event_log = StartTimeEstimator(event_log, configuration).estimate()
     batch_characteristics = discover_batch_processing_and_characteristics(
         event_log=extended_event_log,
         log_ids=EventLogIDs(
-            case=case_column,
-            activity=activity_column,
-            start_time=start_time_column,
-            end_time=end_time_column,
-            resource=resource_column,
+            case=column_mapping.get('case', 'case'),
+            activity=column_mapping.get('activity', 'activity'),
+            start_time=column_mapping.get('start_timestamp', 'start_time'),
+            end_time=column_mapping.get('end_timestamp', 'end_time'),
+            resource=column_mapping.get('resource', 'resource'),
         )
     )
 
     # os.remove(csv_file)
 
     return jsonify(batch_characteristics)
+
 
 
 @app.route('/overview/<jobid>', methods=['GET'])
@@ -807,6 +815,115 @@ def activity_transitions(jobid):
     except Exception as e:
         print("Error executing query:", e)
         return jsonify({"error": "An error occurred while processing your request"}), 500
+    
+
+@app.route('/activity_wt/<jobid>', methods=['GET'])
+def activity_wt(jobid):
+    sanitized_jobid = DBHandler.sanitize_table_name(jobid)
+    table_name = f"result_{sanitized_jobid}"
+
+    conn = DBHandler.get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Could not connect to database"}), 500
+
+    try:
+        cur = conn.cursor()
+
+        # Group by only destinationactivity and sum the waiting times
+        query = sql.SQL("""
+            SELECT
+                destinationactivity,
+                SUM(wttotal) as total_wt,
+                SUM(wtcontention) as contention_wt,
+                SUM(wtbatching) as batching_wt,
+                SUM(wtprioritization) as prioritization_wt,
+                SUM(wtunavailability) as unavailability_wt,
+                SUM(wtextraneous) as extraneous_wt
+            FROM {}
+            GROUP BY destinationactivity
+            ORDER BY total_wt DESC
+        """).format(sql.Identifier(table_name))
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        # Convert the result to a list of dictionaries
+        result = []
+        for row in rows:
+            result.append({
+                "activity": row[0],
+                "total_wt": row[1],
+                "contention_wt": row[2],
+                "batching_wt": row[3],
+                "prioritization_wt": row[4],
+                "unavailability_wt": row[5],
+                "extraneous_wt": row[6]
+            })
+
+        cur.close()
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        print("Error executing query:", e)
+        return jsonify({"error": "An error occurred while processing your request"}), 500
+    
+
+@app.route('/activity_resource_wt/<jobid>', methods=['GET'])
+def activity_resource_wt(jobid):
+    sanitized_jobid = DBHandler.sanitize_table_name(jobid)
+    table_name = f"result_{sanitized_jobid}"
+
+    conn = DBHandler.get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Could not connect to database"}), 500
+
+    try:
+        cur = conn.cursor()
+
+        # Group by both destinationactivity and destinationresource and sum the waiting times
+        query = sql.SQL("""
+            SELECT
+                destinationactivity,
+                destinationresource,
+                SUM(wttotal) as total_wt,
+                SUM(wtcontention) as contention_wt,
+                SUM(wtbatching) as batching_wt,
+                SUM(wtprioritization) as prioritization_wt,
+                SUM(wtunavailability) as unavailability_wt,
+                SUM(wtextraneous) as extraneous_wt
+            FROM {}
+            GROUP BY destinationactivity, destinationresource
+            ORDER BY total_wt DESC
+        """).format(sql.Identifier(table_name))
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        # Convert the result to a list of dictionaries
+        result = []
+        for row in rows:
+            result.append({
+                "activity": row[0],
+                "resource": row[1],
+                "total_wt": row[2],
+                "contention_wt": row[3],
+                "batching_wt": row[4],
+                "prioritization_wt": row[5],
+                "unavailability_wt": row[6],
+                "extraneous_wt": row[7]
+            })
+
+        cur.close()
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        print("Error executing query:", e)
+        return jsonify({"error": "An error occurred while processing your request"}), 500
+
 
 
 @app.route('/activity_transitions_by_resource/<jobid>/<sourceactivity>/<destinationactivity>', methods=['GET'])
