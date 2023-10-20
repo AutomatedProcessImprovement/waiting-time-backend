@@ -65,7 +65,7 @@
         project_name: waiting-time-backend
         env_file: "{{ deployment_dir }}/.env"
         pull: yes
-        build: yes
+        build: no
         remove_orphans: yes
         remove_volumes: yes
         state: present
