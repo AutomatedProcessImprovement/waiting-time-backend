@@ -251,15 +251,16 @@ def wt_overview(jobid, wt_type):
     try:
         cur = conn.cursor()
 
-        # Calculate sum of specific wt_type
-        cur.execute(sql.SQL("SELECT SUM({}) FROM {}").format(
+        # Calculate sum and average of specific wt_type
+        cur.execute(sql.SQL("SELECT SUM({}), AVG({}) FROM {}").format(
+            sql.Identifier("wt" + wt_type),
             sql.Identifier("wt" + wt_type),
             sql.Identifier(table_name)))
-        wt_sum = cur.fetchone()[0]
+        wt_sum, wt_avg = cur.fetchone()
 
-        # Calculate total wt
-        cur.execute(sql.SQL("SELECT SUM(wttotal) FROM {}").format(sql.Identifier(table_name)))
-        total_wttotal_sum = cur.fetchone()[0]
+        # Calculate total wt sum and average
+        cur.execute(sql.SQL("SELECT SUM(wttotal), AVG(wttotal) FROM {}").format(sql.Identifier(table_name)))
+        total_wttotal_sum, total_wttotal_avg = cur.fetchone()
 
         # Count unique elements in caseid column
         cur.execute(sql.SQL("SELECT COUNT(DISTINCT caseid) FROM {}").format(sql.Identifier(table_name)))
@@ -271,34 +272,55 @@ def wt_overview(jobid, wt_type):
         """).format(sql.Identifier(table_name), sql.Identifier("wt" + wt_type)))
         distinct_cases_with_wt = len(cur.fetchall())
 
-        # Find the biggest pair of sourceactivity and destinationactivity for the specific wt_type
+        # For the biggest source-destination pair based on SUM:
         cur.execute(sql.SQL("""
             SELECT sourceactivity, destinationactivity, SUM({})
             FROM {} GROUP BY sourceactivity, destinationactivity
             ORDER BY SUM({}) DESC LIMIT 1
         """).format(sql.Identifier("wt" + wt_type), sql.Identifier(table_name), sql.Identifier("wt" + wt_type)))
-        biggest_source_dest_pair = cur.fetchone()
+        biggest_source_dest_pair_sum = list(cur.fetchone())
 
-        # Find the biggest resource with the specific wt_type
+        # For the biggest source-destination pair based on AVG:
+        cur.execute(sql.SQL("""
+            SELECT sourceactivity, destinationactivity, AVG({})
+            FROM {} GROUP BY sourceactivity, destinationactivity
+            ORDER BY AVG({}) DESC LIMIT 1
+        """).format(sql.Identifier("wt" + wt_type), sql.Identifier(table_name), sql.Identifier("wt" + wt_type)))
+        biggest_source_dest_pair_avg = list(cur.fetchone())
+
+        # For the biggest resource based on SUM:
         cur.execute(sql.SQL("""
             SELECT destinationresource, SUM({})
             FROM {} GROUP BY destinationresource
             ORDER BY SUM({}) DESC LIMIT 1
         """).format(sql.Identifier("wt" + wt_type), sql.Identifier(table_name), sql.Identifier("wt" + wt_type)))
-        biggest_resource = cur.fetchone()
+        biggest_resource_sum = list(cur.fetchone())
+
+        # For the biggest resource based on AVG:
+        cur.execute(sql.SQL("""
+            SELECT destinationresource, AVG({})
+            FROM {} GROUP BY destinationresource
+            ORDER BY AVG({}) DESC LIMIT 1
+        """).format(sql.Identifier("wt" + wt_type), sql.Identifier(table_name), sql.Identifier("wt" + wt_type)))
+        biggest_resource_avg = list(cur.fetchone())
+
 
         cur.close()
         conn.close()
 
         return jsonify({
             "wt_sum": wt_sum,
+            "avg_wt": wt_avg,
             "total_wt_sum": total_wttotal_sum,
+            "avg_total_wt": total_wttotal_avg,
             "distinct_cases": distinct_cases_with_wt,
-            "biggest_source_dest_pair": biggest_source_dest_pair,
-            "biggest_resource": biggest_resource,
+            "biggest_source_dest_pair": biggest_source_dest_pair_sum,
+            "avg_biggest_source_dest_pair": biggest_source_dest_pair_avg,
+            "biggest_resource": biggest_resource_sum,
+            "avg_biggest_resource": biggest_resource_avg,
             "cases": unique_caseid_count
         })
-
+    
     except Exception as e:
         print("Error executing query:", e)
         return jsonify({"error": "An error occurred while processing your request"}), 500
@@ -333,9 +355,21 @@ def wt_overview_activity(jobid, wt_type, sourceactivity, destinationactivity):
         cur.execute(query, (sourceactivity, destinationactivity))
         wt_sum = cur.fetchone()[0]
 
+        # Calculate average of specific wt_type
+        avg_query = sql.SQL("SELECT AVG({column}) FROM {table_name} WHERE sourceactivity = %s AND destinationactivity = %s").format(
+            column=sql.Identifier("wt" + wt_type),
+            table_name=sql.Identifier(table_name)
+        )
+        cur.execute(avg_query, (sourceactivity, destinationactivity))
+        avg_wt = cur.fetchone()[0]
+
         # Calculate total wt
         cur.execute(sql.SQL("SELECT SUM(wttotal) FROM {}").format(sql.Identifier(table_name)))
         total_wttotal_sum = cur.fetchone()[0]
+
+        # Calculate average total wt
+        cur.execute(sql.SQL("SELECT AVG(wttotal) FROM {}").format(sql.Identifier(table_name)))
+        avg_total_wttotal = cur.fetchone()[0]
 
         # Count unique elements in caseid column
         cur.execute(sql.SQL("SELECT COUNT(DISTINCT caseid) FROM {}").format(sql.Identifier(table_name)))
@@ -379,15 +413,47 @@ def wt_overview_activity(jobid, wt_type, sourceactivity, destinationactivity):
         cur.execute(query, (sourceactivity, destinationactivity))
         biggest_source_dest_resource_pair = cur.fetchone()
 
+        # Find the resource with the highest average of the specific wt_type
+        avg_query_resource = sql.SQL("""
+            SELECT destinationresource, AVG({column_name})
+            FROM {table_name} WHERE sourceactivity = %s AND destinationactivity = %s
+            GROUP BY destinationresource
+            ORDER BY AVG({column_name}) DESC LIMIT 1
+        """).format(
+            column_name=sql.Identifier("wt" + wt_type),
+            table_name=sql.Identifier(table_name)
+        )
+
+        cur.execute(avg_query_resource, (sourceactivity, destinationactivity))
+        avg_biggest_resource = cur.fetchone()
+
+        # Find the sourceresource and destinationresource pair with the highest average wt time of our type
+        avg_query_resource_pair = sql.SQL("""
+            SELECT sourceresource, destinationresource, AVG({column_name})
+            FROM {table_name} WHERE sourceactivity = %s AND destinationactivity = %s
+            GROUP BY sourceresource, destinationresource
+            ORDER BY AVG({column_name}) DESC LIMIT 1
+        """).format(
+            column_name=sql.Identifier("wt" + wt_type),
+            table_name=sql.Identifier(table_name)
+        )
+
+        cur.execute(avg_query_resource_pair, (sourceactivity, destinationactivity))
+        avg_biggest_source_dest_resource_pair = cur.fetchone()
+
         cur.close()
         conn.close()
 
         response_data = {
             "wt_sum": wt_sum,
+            "avg_wt": avg_wt,
             "total_wt_sum": total_wttotal_sum,
+            "avg_total_wt": avg_total_wttotal,
             "distinct_cases": distinct_cases_with_wt,
             "biggest_source_dest_resource_pair": biggest_source_dest_resource_pair,
+            "avg_biggest_source_dest_resource_pair": avg_biggest_source_dest_resource_pair,
             "biggest_resource": biggest_resource,
+            "avg_biggest_resource": avg_biggest_resource,
             "cases": unique_caseid_count
         }
 
@@ -589,14 +655,25 @@ def case_overview(jobid, sourceactivity, destinationactivity):
     try:
         cur = conn.cursor()
 
+        # Maximum of the sum of wttotal for each pair of sourceresource and destinationresource
         cur.execute(sql.SQL("""
-            SELECT sourceresource, destinationresource, MAX(wttotal)
+            SELECT sourceresource, destinationresource, SUM(wttotal) as total_sum
             FROM {} WHERE sourceactivity = %s AND destinationactivity = %s
             GROUP BY sourceresource, destinationresource
-            ORDER BY MAX(wttotal) DESC
+            ORDER BY total_sum DESC
             LIMIT 1
         """).format(sql.Identifier(table_name)), (sourceactivity, destinationactivity))
         max_wttotal_pair = cur.fetchone()
+
+        # Maximum of the average of wttotal for each pair of sourceresource and destinationresource
+        cur.execute(sql.SQL("""
+            SELECT sourceresource, destinationresource, AVG(wttotal) as avg_value
+            FROM {} WHERE sourceactivity = %s AND destinationactivity = %s
+            GROUP BY sourceresource, destinationresource
+            ORDER BY avg_value DESC
+            LIMIT 1
+        """).format(sql.Identifier(table_name)), (sourceactivity, destinationactivity))
+        max_wttotal_avg_pair = cur.fetchone()
 
         # Count unique elements in caseid column where sourceactivity and destinationactivity match
         cur.execute(sql.SQL("""
@@ -639,6 +716,18 @@ def case_overview(jobid, sourceactivity, destinationactivity):
         time_diff = fetch_result[0] if fetch_result is not None else None
         processing_time = time_diff.total_seconds() if time_diff else 0
 
+        # Calculate average values
+        avg_specific_wttotal = specific_wttotal_sum / specific_caseid_count if specific_caseid_count != 0 else 0
+        avg_total_wttotal = total_wttotal_sum / total_caseid_count if total_caseid_count != 0 else 0
+        
+        specific_avg_dict = {
+            "contention_wt": specific_sum_dict["contention_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
+            "batching_wt": specific_sum_dict["batching_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
+            "prioritization_wt": specific_sum_dict["prioritization_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
+            "unavailability_wt": specific_sum_dict["unavailability_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
+            "extraneous_wt": specific_sum_dict["extraneous_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0
+        }
+
         cur.close()
         conn.close()
 
@@ -646,10 +735,14 @@ def case_overview(jobid, sourceactivity, destinationactivity):
             "specific_case_count": specific_caseid_count,
             "total_case_count": total_caseid_count,
             "specific_wttotal_sum": specific_wttotal_sum,
+            "avg_specific_wttotal": avg_specific_wttotal,
             "total_wttotal_sum": total_wttotal_sum,
+            "avg_total_wttotal": avg_total_wttotal,
             "specific_sums": specific_sum_dict,
+            "specific_avg": specific_avg_dict,
             "max_wttotal_pair": max_wttotal_pair,
-            "processing_time": processing_time
+            "processing_time": processing_time,
+            "max_wttotal_avg_pair": max_wttotal_avg_pair
         })
 
     except Exception as e:
@@ -869,6 +962,114 @@ def activity_wt(jobid):
         return jsonify({"error": "An error occurred while processing your request"}), 500
     
 
+@app.route('/activity_avg_wt/<jobid>', methods=['GET'])
+def activity_avg_wt(jobid):
+    sanitized_jobid = DBHandler.sanitize_table_name(jobid)
+    table_name = f"result_{sanitized_jobid}"
+
+    conn = DBHandler.get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Could not connect to database"}), 500
+
+    try:
+        cur = conn.cursor()
+
+        # Group by only destinationactivity and average the waiting times
+        query = sql.SQL("""
+            SELECT
+                destinationactivity,
+                AVG(wttotal) as total_wt,
+                AVG(wtcontention) as contention_wt,
+                AVG(wtbatching) as batching_wt,
+                AVG(wtprioritization) as prioritization_wt,
+                AVG(wtunavailability) as unavailability_wt,
+                AVG(wtextraneous) as extraneous_wt
+            FROM {}
+            GROUP BY destinationactivity
+            ORDER BY total_wt DESC
+        """).format(sql.Identifier(table_name))
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        # Convert the result to a list of dictionaries
+        result = []
+        for row in rows:
+            result.append({
+                "activity": row[0],
+                "total_wt": row[1],
+                "contention_wt": row[2],
+                "batching_wt": row[3],
+                "prioritization_wt": row[4],
+                "unavailability_wt": row[5],
+                "extraneous_wt": row[6]
+            })
+
+        cur.close()
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        print("Error executing query:", e)
+        return jsonify({"error": "An error occurred while processing your request"}), 500
+
+
+@app.route('/activity_transitions_average/<jobid>', methods=['GET'])
+def activity_transitions_average(jobid):
+    sanitized_jobid = DBHandler.sanitize_table_name(jobid)
+    table_name = f"result_{sanitized_jobid}"
+
+    conn = DBHandler.get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Could not connect to database"}), 500
+
+    try:
+        cur = conn.cursor()
+
+        # Compute average waiting times for all combinations of sourceactivity and destinationactivity
+        query = sql.SQL("""
+            SELECT
+                sourceactivity,
+                destinationactivity,
+                AVG(wttotal) as avg_total_wt,
+                AVG(wtcontention) as avg_contention_wt,
+                AVG(wtbatching) as avg_batching_wt,
+                AVG(wtprioritization) as avg_prioritization_wt,
+                AVG(wtunavailability) as avg_unavailability_wt,
+                AVG(wtextraneous) as avg_extraneous_wt
+            FROM {}
+            GROUP BY sourceactivity, destinationactivity
+            ORDER BY avg_total_wt DESC
+        """).format(sql.Identifier(table_name))
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        # Convert the result to a list of dictionaries
+        result = []
+        for row in rows:
+            result.append({
+                "source_activity": row[1],
+                "target_activity": row[0],
+                "total_wt": row[2],
+                "contention_wt": row[3],
+                "batching_wt": row[4],
+                "prioritization_wt": row[5],
+                "unavailability_wt": row[6],
+                "extraneous_wt": row[7]
+            })
+
+        cur.close()
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        print("Error executing query:", e)
+        return jsonify({"error": "An error occurred while processing your request"}), 500
+    
+
 @app.route('/activity_resource_wt/<jobid>', methods=['GET'])
 def activity_resource_wt(jobid):
     sanitized_jobid = DBHandler.sanitize_table_name(jobid)
@@ -980,6 +1181,64 @@ def activity_transitions_by_resource(jobid, sourceactivity, destinationactivity)
     except Exception as e:
         print("Error executing query:", e)
         return jsonify({"error": "An error occurred while processing your request"}), 500
+    
+
+@app.route('/activity_transitions_avg_by_resource/<jobid>/<sourceactivity>/<destinationactivity>', methods=['GET'])
+def activity_transitions_avg_by_resource(jobid, sourceactivity, destinationactivity):
+
+    sanitized_jobid = DBHandler.sanitize_table_name(jobid)
+    table_name = f"result_{sanitized_jobid}"
+
+    conn = DBHandler.get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Could not connect to database"}), 500
+
+    try:
+        cur = conn.cursor()
+
+        # Calculate average waiting times for all combinations of sourceresource and targetresource
+        query = sql.SQL("""
+            SELECT
+                sourceresource,
+                destinationresource,
+                AVG(wttotal) as avg_total_wt,
+                AVG(wtcontention) as avg_contention_wt,
+                AVG(wtbatching) as avg_batching_wt,
+                AVG(wtprioritization) as avg_prioritization_wt,
+                AVG(wtunavailability) as avg_unavailability_wt,
+                AVG(wtextraneous) as avg_extraneous_wt
+            FROM {}
+            WHERE sourceactivity = %s AND destinationactivity = %s
+            GROUP BY sourceresource, destinationresource
+            ORDER BY avg_total_wt DESC
+        """).format(sql.Identifier(table_name))
+
+        cur.execute(query, (sourceactivity, destinationactivity))
+        rows = cur.fetchall()
+
+        # Convert the result to a list of dictionaries
+        result = []
+        for row in rows:
+            result.append({
+                "source_resource": row[0],
+                "target_resource": row[1],
+                "total_wt": row[2],
+                "contention_wt": row[3],
+                "batching_wt": row[4],
+                "prioritization_wt": row[5],
+                "unavailability_wt": row[6],
+                "extraneous_wt": row[7]
+            })
+
+        cur.close()
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        print("Error executing query:", e)
+        return jsonify({"error": "An error occurred while processing your request"}), 500
+
 
 
 @app.route('/activity_transitions/<jobid>/<sourceactivity>/<targetactivity>', methods=['GET'])
