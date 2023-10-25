@@ -716,16 +716,35 @@ def case_overview(jobid, sourceactivity, destinationactivity):
         time_diff = fetch_result[0] if fetch_result is not None else None
         processing_time = time_diff.total_seconds() if time_diff else 0
 
-        # Calculate average values
-        avg_specific_wttotal = specific_wttotal_sum / specific_caseid_count if specific_caseid_count != 0 else 0
-        avg_total_wttotal = total_wttotal_sum / total_caseid_count if total_caseid_count != 0 else 0
+        # Avg of wttotal where sourceactivity and destinationactivity match
+        cur.execute(sql.SQL("""
+            SELECT AVG(wttotal) FROM {} WHERE sourceactivity = %s AND destinationactivity = %s
+        """).format(sql.Identifier(table_name)), (sourceactivity, destinationactivity))
+        avg_specific_wttotal = cur.fetchone()[0]
+        # avg_specific_wttotal = specific_wttotal_sum / specific_caseid_count if specific_caseid_count != 0 else 0
+        # avg_total_wttotal = total_wttotal_sum / total_caseid_count if total_caseid_count != 0 else 0
+        cur.execute(sql.SQL("SELECT AVG(wttotal) FROM {}").format(sql.Identifier(table_name)))
+        avg_total_wttotal = cur.fetchone()[0]
         
+        # specific_avg_dict = {
+        #     "contention_wt": specific_sum_dict["contention_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
+        #     "batching_wt": specific_sum_dict["batching_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
+        #     "prioritization_wt": specific_sum_dict["prioritization_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
+        #     "unavailability_wt": specific_sum_dict["unavailability_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
+        #     "extraneous_wt": specific_sum_dict["extraneous_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0
+        # }
+
+        cur.execute(sql.SQL("""
+            SELECT AVG(wtcontention), AVG(wtbatching), AVG(wtprioritization), AVG(wtunavailability), AVG(wtextraneous)
+            FROM {} WHERE sourceactivity = %s AND destinationactivity = %s
+        """).format(sql.Identifier(table_name)), (sourceactivity, destinationactivity))
+        specific_avg = cur.fetchone()
         specific_avg_dict = {
-            "contention_wt": specific_sum_dict["contention_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
-            "batching_wt": specific_sum_dict["batching_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
-            "prioritization_wt": specific_sum_dict["prioritization_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
-            "unavailability_wt": specific_sum_dict["unavailability_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0,
-            "extraneous_wt": specific_sum_dict["extraneous_wt"] / specific_caseid_count if specific_caseid_count != 0 else 0
+            "contention_wt": specific_avg[0],
+            "batching_wt": specific_avg[1],
+            "prioritization_wt": specific_avg[2],
+            "unavailability_wt": specific_avg[3],
+            "extraneous_wt": specific_avg[4]
         }
 
         cur.close()
@@ -855,7 +874,7 @@ def daily_summary_specific_pair(jobid, sourceactivity, destinationactivity):
 
 
 @app.route('/activity_transitions/<jobid>', methods=['GET'])
-def activity_transitions(jobid):
+def all_activity_transitions(jobid):
     sanitized_jobid = DBHandler.sanitize_table_name(jobid)
     table_name = f"result_{sanitized_jobid}"
 
@@ -879,30 +898,29 @@ def activity_transitions(jobid):
                 SUM(wtextraneous) as extraneous_wt
             FROM {}
             GROUP BY sourceactivity, destinationactivity
-            ORDER BY total_wt DESC
         """).format(sql.Identifier(table_name))
 
         cur.execute(query)
+        
+        results = []
         rows = cur.fetchall()
-
-        # Convert the result to a list of dictionaries
-        result = []
         for row in rows:
-            result.append({
-                "source_activity": row[1],
-                "target_activity": row[0],
+            result = {
+                "source_activity": row[0],
+                "target_activity": row[1],
                 "total_wt": row[2],
                 "contention_wt": row[3],
                 "batching_wt": row[4],
                 "prioritization_wt": row[5],
                 "unavailability_wt": row[6],
                 "extraneous_wt": row[7]
-            })
+            }
+            results.append(result)
 
         cur.close()
         conn.close()
 
-        return jsonify(result)
+        return jsonify(results)
 
     except Exception as e:
         print("Error executing query:", e)
@@ -1050,8 +1068,8 @@ def activity_transitions_average(jobid):
         result = []
         for row in rows:
             result.append({
-                "source_activity": row[1],
-                "target_activity": row[0],
+                "source_activity": row[0],
+                "target_activity": row[1],
                 "total_wt": row[2],
                 "contention_wt": row[3],
                 "batching_wt": row[4],
@@ -1276,8 +1294,8 @@ def specific_activity_transitions(jobid, sourceactivity, targetactivity):
             return jsonify({}), 200
 
         result = {
-            "source_activity": row[1],
-            "target_activity": row[0],
+            "source_activity": row[0],
+            "target_activity": row[1],
             "total_wt": row[2],
             "contention_wt": row[3],
             "batching_wt": row[4],
