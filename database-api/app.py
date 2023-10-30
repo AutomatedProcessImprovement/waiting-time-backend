@@ -1088,6 +1088,75 @@ def activity_transitions_average(jobid):
         return jsonify({"error": "An error occurred while processing your request"}), 500
     
 
+@app.route('/activity_transitions_average_case/<jobid>', methods=['GET'])
+def activity_transitions_average_case(jobid):
+    sanitized_jobid = DBHandler.sanitize_table_name(jobid)
+    table_name = f"result_{sanitized_jobid}"
+
+    conn = DBHandler.get_db_connection()
+    if conn is None:
+        return jsonify({"error": "Could not connect to database"}), 500
+
+    try:
+        cur = conn.cursor()
+
+        # Compute average waiting times for all combinations of sourceactivity and destinationactivity on a per-case basis, then average them
+        query = sql.SQL("""
+            WITH case_avg AS (
+                SELECT
+                    sourceactivity,
+                    destinationactivity,
+                    case_id,
+                    AVG(wttotal) as avg_total_wt_case,
+                    AVG(wtcontention) as avg_contention_wt_case,
+                    AVG(wtbatching) as avg_batching_wt_case,
+                    AVG(wtprioritization) as avg_prioritization_wt_case,
+                    AVG(wtunavailability) as avg_unavailability_wt_case,
+                    AVG(wtextraneous) as avg_extraneous_wt_case
+                FROM {}
+                GROUP BY sourceactivity, destinationactivity, case_id
+            )
+            SELECT
+                sourceactivity,
+                destinationactivity,
+                AVG(avg_total_wt_case) as avg_total_wt,
+                AVG(avg_contention_wt_case) as avg_contention_wt,
+                AVG(avg_batching_wt_case) as avg_batching_wt,
+                AVG(avg_prioritization_wt_case) as avg_prioritization_wt,
+                AVG(avg_unavailability_wt_case) as avg_unavailability_wt,
+                AVG(avg_extraneous_wt_case) as avg_extraneous_wt
+            FROM case_avg
+            GROUP BY sourceactivity, destinationactivity
+            ORDER BY avg_total_wt DESC
+        """).format(sql.Identifier(table_name))
+
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        # Convert the result to a list of dictionaries
+        result = []
+        for row in rows:
+            result.append({
+                "source_activity": row[0],
+                "target_activity": row[1],
+                "total_wt": row[2],
+                "contention_wt": row[3],
+                "batching_wt": row[4],
+                "prioritization_wt": row[5],
+                "unavailability_wt": row[6],
+                "extraneous_wt": row[7]
+            })
+
+        cur.close()
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        print("Error executing query:", e)
+        return jsonify({"error": "An error occurred while processing your request"}), 500
+    
+
 @app.route('/activity_resource_wt/<jobid>', methods=['GET'])
 def activity_resource_wt(jobid):
     sanitized_jobid = DBHandler.sanitize_table_name(jobid)
