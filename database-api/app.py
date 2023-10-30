@@ -1106,7 +1106,7 @@ def activity_transitions_average_case(jobid):
                 SELECT
                     sourceactivity,
                     destinationactivity,
-                    case_id,
+                    caseid,
                     AVG(wttotal) as avg_total_wt_case,
                     AVG(wtcontention) as avg_contention_wt_case,
                     AVG(wtbatching) as avg_batching_wt_case,
@@ -1114,7 +1114,7 @@ def activity_transitions_average_case(jobid):
                     AVG(wtunavailability) as avg_unavailability_wt_case,
                     AVG(wtextraneous) as avg_extraneous_wt_case
                 FROM {}
-                GROUP BY sourceactivity, destinationactivity, case_id
+                GROUP BY sourceactivity, destinationactivity, caseid
             )
             SELECT
                 sourceactivity,
