@@ -18,6 +18,7 @@ chat_blueprint = Blueprint('chat', __name__)
 
 # Initialize the OpenAI client
 client = OpenAI(
+    
 )
 assistant = client.beta.assistants.retrieve("asst_qq5TsyJEYMIHKwu02u4pGvPz")
 # thread = client.beta.threads.retrieve("thread_6iSLlnNa84rArVkLd1HuDdyM")
@@ -29,9 +30,13 @@ def create_thread(jobid, message):
     thread = client.beta.threads.create()
     return thread
 
-@chat_blueprint.route('/start/<jobid>/<message>', methods=['POST'])
-def start_request(jobid, message):
+@chat_blueprint.route('/start', methods=['POST'])
+def start_request():
     try:
+        data = request.json
+        jobid = data['jobid']
+        message = data['message']
+
         new_thread = create_thread(jobid, message)
         logger.info(f"New thread created: {new_thread.id}")
 
@@ -55,9 +60,14 @@ def start_request(jobid, message):
         return jsonify({'error': str(e)}), 500
 
 
-@chat_blueprint.route('/process/<threadid>/<jobid>/<message>', methods=['POST'])
+@chat_blueprint.route('/process', methods=['POST'])
 def process_request(threadid, jobid, message):
     try:
+        data = request.json
+        threadid = data['threadId']
+        jobid = data['jobid']
+        message = data['message']
+        
         message_response = client.beta.threads.messages.create(
             thread_id=threadid,
             role="user",
