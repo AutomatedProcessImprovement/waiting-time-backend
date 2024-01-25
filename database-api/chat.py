@@ -9,22 +9,105 @@ from io import StringIO
 import requests
 import app
 import logging
+import json
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Format of log messages
+    datefmt='%Y-%m-%d %H:%M:%S',  # Format of the date/time in log messages
+    handlers=[
+        logging.FileHandler('/app/logs/app.log'),  # Log to a file
+        logging.StreamHandler()  # Log to console (you can remove this if you don't want logging to console)
+    ]
+)
 logger = logging.getLogger(__name__)
 
 chat_blueprint = Blueprint('chat', __name__)
 
 # Initialize the OpenAI client
 client = OpenAI(
-    
+    api_key="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"
 )
-assistant = client.beta.assistants.retrieve("asst_qq5TsyJEYMIHKwu02u4pGvPz")
-# thread = client.beta.threads.retrieve("thread_6iSLlnNa84rArVkLd1HuDdyM")
 
-instructions = "Waiting times are located in transitions between a pair of sequentially executed activities. Kronos identifies the duration of each execution of a transition. Then, it decomposes the duration into intervals by a waiting time cause. Kronos identifies intervals due to 5 causes: batching, prioritization, resource contention, resource unavailability, and extraneous factors. Example: when processing case ID12, there is a transition execution between activities A and B with a duration of 10 hours, decomposed as 1 hour - due to batching, 2 hours - due to prioritization, 3 hours - due to resource contention, 3 hours - due to resource unavailability, and 1 hour - due to extraneous factors. As a result of the analysis, Kronos compiles a report about the causes of waiting times for each transition execution. In this report, each row is a transition execution, i.e., when a case is transferred between a pair of activities.Thus, start_time and end_time refer to the start and end time of the transition execution.source_activity is the activity from which the case is transferred.source_resource is the resource that executes the source_activity.destination_activity is the activity to which the case is transferred.destination_resource is the resource that executes the destination_activity.case_id is the identification label of the case.The transition execution has a duration that is waiting time; it is wt_total.The duration wt_total is decomposed into intervals based on the cause of waiting time:wt_contention is the interval of waiting time due to resource contention;wt_batching is the interval of waiting time due to batching;wt_prioritization is the interval of waiting time due to prioritization;wt_unavailability is the interval of waiting time due to  resource unavailability;wt_extraneous is the interval of waiting time due to extraneous (external) factors.Data units of waiting times are seconds. When presenting the results of the analysis, use a convenient readable data format, e.g., 2 years 2 months 2 days 2 minutes.Each transition (as defined by a unique combination of source_activity and destination_activity) might have multiple executions (rows in the dataset), and we should consider the combined waiting time across all these executions to determine the transition's duration.  Here is an explanation of the causes of waiting time.Waiting time due to batching occurs when an activity instance waits for another activity instance to be enabled in order to be processed together as a batch.Waiting time due to resource contention is observed when an activity instance waits to be processed by an assigned resource that is busy processing other activity instances, following a first-in-first-out (FIFO) order.Waiting time due to prioritization}is identified when the assigned resource is busy with an activity instance that was prioritized over the waiting one (not executed in the FIFO order).Waiting time due to resource unavailability occurs when the assigned resource is unavailable (off duty) due to their working schedules.We discover the working schedules of each resource to compare resource calendars with the waiting times observed in the log.Waiting time due to extraneous factors covers waiting times caused by external effects that cannot be identified from the event log -- e.g., the resource is working on another process, fatigue effects, or context switches."
+assistant = client.beta.assistants.retrieve("asst_wC8a4YpPfz7jWl24MkVwp0km") #new
+# logger.info(str(assistant))
+# assistant = client.beta.assistants.retrieve("asst_qq5TsyJEYMIHKwu02u4pGvPz") #old
+
+instructions_table = "Use '{table_name}' as a placeholder for the actual table name in your query. In response time is given in seconds, so you need to convert it better (years/months/days/hours/minutes) format before providing an answer."
+instructions = "Use function calling to get data about waiting times. Available columns: starttime, endtime, wtcontention, wtbatching, wtprioritization, wtunavailability, wtextraneous, sourceactivity, destinationactivity, sourceresource, destinationresource, wttotal. Waiting times are located in transitions between a pair of sequentially executed activities. Kronos identifies the duration of each execution of a transition. Then, it decomposes the duration into intervals by a waiting time cause. Kronos identifies intervals due to 5 causes: batching, prioritization, resource contention, resource unavailability, and extraneous factors. Example: when processing case ID12, there is a transition execution between activities A and B with a duration of 10 hours, decomposed as 1 hour - due to batching, 2 hours - due to prioritization, 3 hours - due to resource contention, 3 hours - due to resource unavailability, and 1 hour - due to extraneous factors. As a result of the analysis, Kronos compiles a report about the causes of waiting times for each transition execution.  The file appears to be a CSV (Comma-Separated Values) file containing the following columns: start_time: The start time of the transition. end_time: The end time of the transition. source_activity: The activity from which the case is transferred. source_resource: The resource associated with the source activity. destination_activity: The activity to which the case is transferred. destination_resource: The resource associated with the destination activity. case_id: The identifier of the business case. wt_total: The total waiting time for the transition execution. wt_contention: Waiting time due to resource contention. wt_batching: Waiting time due to batching. wt_prioritization: Waiting time due to prioritization. wt_unavailability: Waiting time due to resource unavailability. wt_extraneous: Waiting time due to extraneous factors."
+# instructions = "Waiting times are located in transitions between a pair of sequentially executed activities. Kronos identifies the duration of each execution of a transition. Then, it decomposes the duration into intervals by a waiting time cause. Kronos identifies intervals due to 5 causes: batching, prioritization, resource contention, resource unavailability, and extraneous factors. Example: when processing case ID12, there is a transition execution between activities A and B with a duration of 10 hours, decomposed as 1 hour - due to batching, 2 hours - due to prioritization, 3 hours - due to resource contention, 3 hours - due to resource unavailability, and 1 hour - due to extraneous factors. As a result of the analysis, Kronos compiles a report about the causes of waiting times for each transition execution. In this report, each row is a transition execution, i.e., when a case is transferred between a pair of activities.Thus, start_time and end_time refer to the start and end time of the transition execution.source_activity is the activity from which the case is transferred.source_resource is the resource that executes the source_activity.destination_activity is the activity to which the case is transferred.destination_resource is the resource that executes the destination_activity.case_id is the identification label of the case.The transition execution has a duration that is waiting time; it is wt_total.The duration wt_total is decomposed into intervals based on the cause of waiting time:wt_contention is the interval of waiting time due to resource contention;wt_batching is the interval of waiting time due to batching;wt_prioritization is the interval of waiting time due to prioritization;wt_unavailability is the interval of waiting time due to  resource unavailability;wt_extraneous is the interval of waiting time due to extraneous (external) factors.Data units of waiting times are seconds. When presenting the results of the analysis, use a convenient readable data format, e.g., 2 years 2 months 2 days 2 minutes.Each transition (as defined by a unique combination of source_activity and destination_activity) might have multiple executions (rows in the dataset), and we should consider the combined waiting time across all these executions to determine the transition's duration.  Here is an explanation of the causes of waiting time.Waiting time due to batching occurs when an activity instance waits for another activity instance to be enabled in order to be processed together as a batch.Waiting time due to resource contention is observed when an activity instance waits to be processed by an assigned resource that is busy processing other activity instances, following a first-in-first-out (FIFO) order.Waiting time due to prioritization}is identified when the assigned resource is busy with an activity instance that was prioritized over the waiting one (not executed in the FIFO order).Waiting time due to resource unavailability occurs when the assigned resource is unavailable (off duty) due to their working schedules.We discover the working schedules of each resource to compare resource calendars with the waiting times observed in the log.Waiting time due to extraneous factors covers waiting times caused by external effects that cannot be identified from the event log -- e.g., the resource is working on another process, fatigue effects, or context switches."
 base_url = "http://154.56.63.127"
+added_text = "When presenting the results of the analysis, use a convenient, readable data format for waiting times (not units, but time in years, months, days, hours, minutes). Initial data is in seconds"
+
+default_function_descriptions = {
+    "discover_case_attributes": "Discovers and returns case attributes present in the event log. If returned data is empty, then there is no case attributes present in the event log.",
+    "discover_batching_strategies": "Returns batching strategies of an event log. The function internally processes a pre-loaded event log and discovers batching strategies, providing insights into batch processing instances within a process. It characterizes each batch with details about the activity, involved resources, batch processing type (sequential, concurrent, or parallel), frequency, batch size distribution, duration distribution, and firing rules for batch initiation.",
+    "discover_prioritization_strategies": "Discovers and returns prioritization strategies from an event log. This function analyzes the pre-loaded event log to identify case priority levels and classify process cases into corresponding levels. It provides insights into how cases are prioritized, ensuring that high-priority activities are executed before lower-priority ones when enabled simultaneously. The function categorizes cases into priority levels (e.g., low, medium, high) and identifies the rules that determine the priority level of each case.",
+    "get_redesign_pattern_info": "Provides detailed information about specific redesign patterns. The information includes definitions, explanations, examples, positive impacts, negative impacts, and references. The function accepts one or several pattern names and returns comprehensive details about each.",
+}
+
+default_tools = [
+    {
+        "function": {
+            "name": "discover_batching_strategies",
+            "description": default_function_descriptions["discover_batching_strategies"],
+            "parameters": {},
+        },
+        "type": "function",
+    },
+    {
+        "function": {
+            "name": "discover_prioritization_strategies",
+            "description": default_function_descriptions["discover_prioritization_strategies"],
+            "parameters": {},
+        },
+        "type": "function",
+    },
+    {
+        "function": {
+            "name": "discover_case_attributes",
+            "description": default_function_descriptions["discover_case_attributes"],
+            "parameters": {},
+        },
+        "type": "function",
+    },
+    {
+        "function": {
+            "name": "get_redesign_pattern_info",
+            "description": default_function_descriptions["get_redesign_pattern_info"],
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "patterns": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "The list of redesign pattern names for which information is requested. Possible patterns: Contact reduction, First-contact problem resolution, Follow-up, Customer integration, Customer scheduling, Arrival time incentives, Task elimination, Fragment elimination, Task composition (combination), Task decomposition, Process decomposition, Process standardization, Process generalization, Process centralization, Case-based work, Case buffering, Periodic action, Resequencing, Parallelism, Order types (Case types), Triage, Exception, Extra resources, Resource scheduling, Assign cases, Customer teams, Fixed assignment , Flexible assignment, Case reassignement, Split responsibilities, Specialist, Empower, Department-based assignment, Experience-based task assignment, Expertise-based task assignment, Performance-based task assignment, Role-based task assignment, Teamwork-based assignment, Workload-based task assignment, Task delegation, Inventory buffering, Data elimination, Data composition, Data standardization, Capture data at source, Buffer information, Task automation, Automate for environmental impact, Fragment automation, Process automation, Integral technology , Establish standardized interfaces, Batch strategy optimization, Prioritization strategy optimization, Resource schedule optimization."
+                    }
+                },
+                "required": ["patterns"]
+            },
+            "type": "function"
+        }
+    },
+    {
+        "function": {
+            "name": "query_database",
+            "description": "Executes a read-only SQL query on a specific database that contains analysis on waiting times and returns the results. The query should be limited to select statements. Use '{table_name}' as a placeholder for the actual table name in your query. Available columns: starttime, endtime, wtcontention, wtbatching, wtprioritization, wtunavailability, wtextraneous, sourceactivity, destinationactivity, sourceresource, destinationresource, wttotal.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The SQL query to execute. Include '{table_name}' as a placeholder for the table name."
+                    }
+                },
+                "required": ["query"]
+            },
+        },
+        "type": "function"
+    }
+]
 
 def create_thread(jobid, message):
     thread = client.beta.threads.create()
@@ -36,6 +119,38 @@ def start_request():
         data = request.json
         jobid = data['jobid']
         message = data['message']
+        instructions_req = data['instructions']
+        assistant_instructions = data.get('assistantInstructions', '')
+        selected_model = data['model']
+        updated_descriptions = data.get('functionDescriptions', {})
+        function_enabled_flags = data.get('functionStatus', {})
+
+        logger.info("Enabled functions: " + str(function_enabled_flags))
+        logger.info("Updated descriptions" + str(updated_descriptions))
+
+        # Prepare the update parameters
+        update_params = {
+            "assistant_id": assistant.id,
+            "model": selected_model,
+            # "tools": []
+        }
+
+        # Only include instructions if they are not empty
+        if assistant_instructions.strip():
+            update_params["instructions"] = assistant_instructions
+
+        # # Update tools based on the request
+        # for tool in default_tools:
+        #     function_name = tool["function"]["name"]
+        #     # Ensure 'query_database' is always included
+        #     if function_name == 'query_database' or function_name == 'get_redesign_pattern_info' or function_enabled_flags.get(function_name, True):
+        #         # Get the tool description, either the updated one or the default
+        #         tool_description = updated_descriptions.get(function_name, tool["function"]["description"])
+        #         tool["function"]["description"] = tool_description
+        #         update_params["tools"].append(tool)
+
+        logger.info(f"Update params: {update_params}")
+        logger.info(f"Updated??? {str(client.beta.assistants.update(**update_params))}")
 
         new_thread = create_thread(jobid, message)
         logger.info(f"New thread created: {new_thread.id}")
@@ -50,7 +165,7 @@ def start_request():
         run_response = client.beta.threads.runs.create(
             thread_id=new_thread.id,
             assistant_id=assistant.id,
-            instructions=instructions
+            instructions=instructions_req
         )
         logger.info(f"Run created in thread {new_thread.id}")
 
@@ -61,24 +176,29 @@ def start_request():
 
 
 @chat_blueprint.route('/process', methods=['POST'])
-def process_request(threadid, jobid, message):
+def process_request():
     try:
+        logger.info(f"Message sent in existing thread!")
+
         data = request.json
         threadid = data['threadId']
         jobid = data['jobid']
         message = data['message']
+        instructions_req = data['instructions']
         
+        logger.info(f"Message sent in existing thread with params {threadid}, {jobid}, {message}, {instructions_req}")
+
         message_response = client.beta.threads.messages.create(
             thread_id=threadid,
             role="user",
-            content=message,
+            content=message+added_text,
         )
         logger.info(f"Message sent in existing thread {threadid}")
 
         run_response = client.beta.threads.runs.create(
             thread_id=threadid,
             assistant_id=assistant.id,
-            instructions=instructions
+            instructions=instructions_req
         )
         logger.info(f"Run created in existing thread {threadid}")
 
@@ -88,34 +208,116 @@ def process_request(threadid, jobid, message):
         return jsonify({'error': str(e)}), 500
 
 
-@chat_blueprint.route('/status/<threadid>/<runid>', methods=['GET'])
-def message_status(threadid, runid):
+@chat_blueprint.route('/status/<jobid>/<threadid>/<runid>', methods=['GET'])
+def message_status(jobid, threadid, runid):
     try:
-        run_status = client.beta.threads.runs.retrieve(
+        run = client.beta.threads.runs.retrieve(
             thread_id=threadid,
             run_id=runid
-        ).status
+        )
+        run_status = run.status
         logger.info(f"Run status retrieved for thread {threadid}, run {runid}: {run_status}")
 
         if run_status == 'completed':
             messages = client.beta.threads.messages.list(threadid)
+            last_five_messages = messages.data[:10]
+            for msg in last_five_messages:
+                logger.info(f"Message in thread {threadid}: {msg.content[0].text.value if msg.content else 'No content'}")
             response_message = messages.data[0].content[0].text.value
             logger.info(f"Response message for thread {threadid}, run {runid}: {response_message}")
 
             if response_message:
                 return jsonify({'status': 'completed', 'message': response_message})
-        
+
+        if run_status == 'failed':
+            return jsonify({'error': "Run has failed, problem on openai api side"}), 500
+
+        tool_outputs = []
+        if run_status == 'requires_action':
+            logger.info(f"Processing required actions for thread {threadid}, run {runid}")
+            for tool_call in run.required_action.submit_tool_outputs.tool_calls:
+                tool_call_id = tool_call.id
+                function_name = tool_call.function.name
+                
+                logger.info(f"Processing tool: {function_name} with tool_call_id: {tool_call_id}")
+                
+                # Initialize function_result
+                function_result = None
+                
+                # Process based on function_name
+                if function_name == 'query_database':
+                    try:
+                        function_arguments = json.loads(tool_call.function.arguments)
+                        sanitized_jobid = app.DBHandler.sanitize_table_name(jobid)
+                        table_name = f"result_{sanitized_jobid}"
+                        query_template = function_arguments["query"]
+                        query_template = query_template.replace("'{'table_name'}'", "{table_name}").replace('"{table_name}"', "{table_name}")
+                        query_string = query_template.replace("{table_name}", table_name)
+                        logger.info(f"Executing query: {query_string}")
+                        query_result = app.execute_sql_query(jobid, query_string)
+                        function_result = json.dumps(query_result)
+                        logger.info(f"Query executed successfully, results obtained.")
+                    except json.JSONDecodeError as json_err:
+                        logger.error(f"JSON parsing error: {str(json_err)}")
+                elif function_name == 'discover_batching_strategies':
+                    function_result = str(app.perform_batching_discovery(jobid))
+                    logger.info(f"Function {function_name} executed, results obtained {function_result}")
+                elif function_name == 'discover_prioritization_strategies':
+                    function_result = str(app.perform_prioritization_discovery(jobid))
+                    logger.info(f"Function {function_name} executed, results obtained {function_result}.")
+                elif function_name == 'discover_case_attributes':
+                    function_result = str(app.case_attributes_discovery(jobid))
+                    logger.info(f"Function {function_name} executed, results obtained.")
+                elif function_name == 'get_redesign_pattern_info':
+                    function_arguments = json.loads(tool_call.function.arguments)
+                    function_result = str(get_redesign_pattern_info(function_arguments["patterns"]))
+                    logger.info(f"Redesign patterns info retrieved successfully. {function_result}")
+                
+                if function_result is not None:
+                    tool_outputs.append({
+                        "tool_call_id": tool_call_id,
+                        "output": function_result,
+                    })
+                    logger.info(f"Tool output for tool_call_id {tool_call_id} appended successfully.")
+
+            if tool_outputs:
+                run = client.beta.threads.runs.submit_tool_outputs(
+                    thread_id=threadid,
+                    run_id=runid,
+                    tool_outputs=tool_outputs,
+                )
+                logger.info(f"Updated run status for thread {threadid}, run {runid}: {run.status}")
+            
+            return jsonify({'status': run_status, 'message': f'Called tool {function_name}'})
         return jsonify({'status': run_status, 'message': ''})
+
     except Exception as e:
         logger.error(f"Error in message_status: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'status': "error", 'message': str(e)}), 500
 
 
 
 
 
+def get_redesign_pattern_info(patterns):
+    try:
+        # Load the JSON data from the file
+        with open('patterns.json', 'r') as json_file:
+            redesign_patterns_info = json.load(json_file)
+        
+        # Fetch information for the requested patterns
+        patterns_info = {pattern: redesign_patterns_info[pattern] for pattern in patterns if pattern in redesign_patterns_info}
 
+        # Check if information was found for all requested patterns
+        if len(patterns_info) != len(patterns):
+            missing_patterns = set(patterns) - set(patterns_info.keys())
+            available_patterns = list(redesign_patterns_info.keys())
+            return ({'error': f'Information not found for patterns: {", ".join(missing_patterns)}',
+                            'available_patterns': available_patterns}), 404
 
+        return patterns_info, 200
+    except Exception as e:
+        return ({'error': str(e)}), 500
 
 
 

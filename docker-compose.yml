@@ -36,6 +36,7 @@ services:
     image: postgres:16.0
     volumes:
       - ./data:/var/lib/postgresql/data
+      # - ./pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
     env_file:
       - .env
     expose:
@@ -53,3 +54,5 @@ services:
     depends_on:
       - db
     restart: always
+    volumes:
+      - /root/pix/waiting-time-backend/database-api:/app/logs

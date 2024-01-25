@@ -7,6 +7,7 @@ from chat import chat_blueprint
 import pandas as pd
 # from flask_cors import CORS
 import psycopg2
+import logging
 from psycopg2 import sql
 from pix_framework.discovery.batch_processing.batch_characteristics import discover_batch_processing_and_characteristics
 from pix_framework.io.event_log import EventLogIDs, read_csv_log
@@ -19,6 +20,8 @@ from pix_framework.discovery.prioritization.discovery import discover_priority_r
 
 app = Flask(__name__)
 app.register_blueprint(chat_blueprint)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # resources = {
 #     r"/overview/*": {"origins": ALLOWED_ORIGINS},
@@ -71,31 +74,71 @@ class DBHandler:
             return None
 
 
-@app.route('/batching_strategies/<jobid>', methods=['GET'])
-def batching_strategies(jobid):
+def execute_sql_query(jobid, query):
+    sanitized_jobid = DBHandler.sanitize_table_name(jobid)
+    table_name = f"result_{sanitized_jobid}"
+
+    conn = DBHandler.get_db_connection()
+    if conn is None:
+        raise Exception("Could not connect to the database")
+
+    try:
+        cur = conn.cursor()
+
+        # Execute the provided query
+        query_with_table = query.replace('{table_name}', table_name)
+        cur.execute(sql.SQL(query_with_table))
+
+        # Fetch the results
+        result = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        return result
+
+    except Exception as e:
+        print("Error executing query:", e)
+        raise
+
+
+@app.route('/execute_query/<jobid>', methods=['POST'])
+def execute_query_endpoint(jobid):
+    data = request.json
+    query = data.get('query')
+
+    if not query:
+        return jsonify({"error": "No query provided"}), 400
+
+    try:
+        result = execute_sql_query(jobid, query)
+        return jsonify({"result": result})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def perform_batching_discovery(jobid):
     try:
         # Fetch column_mapping first
-        job_url = f"http://154.56.63.127:8080/jobs/{jobid}"
+        job_url = f"http://154.56.63.127/jobs/{jobid}"
         response = requests.get(job_url)
-        
         if response.status_code != 200:
-            return jsonify({"error": f"Failed to retrieve job details for jobid {jobid}"}), 500
+            return {"error": f"Failed to retrieve job details for jobid {jobid}"}, 500
         
         job_data = response.json()
         column_mapping = job_data.get('column_mapping', {})
 
         # Fetch the CSV
-        csv_url = f"http://154.56.63.127:8080/assets/results/{jobid}/event_log.csv"
+        csv_url = f"http://154.56.63.127/assets/results/{jobid}/event_log.csv"
         response = requests.get(csv_url)
-
         if response.status_code != 200:
-            return jsonify({"error": f"Failed to retrieve CSV for jobid {jobid}"}), 500
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}"}, 500
 
         csv_data = response.content.decode('utf-8')
         csv_file = "temporary.csv"
         with open(csv_file, "w") as f:
             f.write(csv_data)
-
         # Process the CSV using column_mapping
         event_log = read_csv_log(
             log_path=csv_file,
@@ -135,34 +178,37 @@ def batching_strategies(jobid):
                 resource=column_mapping.get('resource', 'resource'),
             )
         )
+        return batch_characteristics, 200
 
-        # os.remove(csv_file)
-
-        return jsonify(batch_characteristics)
-    
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.info(f"Error in batching strategies: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.route('/batching_strategies/<jobid>', methods=['GET'])
+def batching_strategies(jobid):
+    result, status_code = perform_batching_discovery(jobid)
+    if status_code == 200:
+        return jsonify(result)
+    else:
+        return jsonify(result), status_code
 
 
-@app.route('/prioritization_strategies/<jobid>', methods=['GET'])
-def prioritization_strategies(jobid):
+def perform_prioritization_discovery(jobid):
     try:
         # Fetch column_mapping first
-        job_url = f"http://154.56.63.127:8080/jobs/{jobid}"
+        job_url = f"http://154.56.63.127/jobs/{jobid}"
         response = requests.get(job_url)
-        
         if response.status_code != 200:
-            return jsonify({"error": f"Failed to retrieve job details for jobid {jobid}"}), 500
+            return {"error": f"Failed to retrieve job details for jobid {jobid}"}, 500
         
         job_data = response.json()
         column_mapping = job_data.get('column_mapping', {})
 
         # Fetch the CSV
-        csv_url = f"http://154.56.63.127:8080/assets/results/{jobid}/event_log.csv"
+        csv_url = f"http://154.56.63.127/assets/results/{jobid}/event_log.csv"
         response = requests.get(csv_url)
-
         if response.status_code != 200:
-            return jsonify({"error": f"Failed to retrieve CSV for jobid {jobid}"}), 500
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}"}, 500
 
         csv_data = response.content.decode('utf-8')
         csv_file = "temporary.csv"
@@ -217,7 +263,7 @@ def prioritization_strategies(jobid):
         # Filter out used columns
         remaining_columns = [col for col in all_columns if col not in used_columns]
         if remaining_columns == []:
-            return jsonify([])
+            return "No prioritization strategies discovered as no case attributes present in the event log", 200
         
         print("5")
         extended_event_log = StartTimeEstimator(event_log, configuration).estimate()
@@ -229,10 +275,64 @@ def prioritization_strategies(jobid):
 
         # os.remove(csv_file)
         print("Prioritization:", prioritization_characteristics)
-        return jsonify(prioritization_characteristics)
+        return prioritization_characteristics, 200  # return raw data
+
+    except Exception as e:
+        logger.info(f"Error in prioritization strategies: {str(e)}")
+        return {"error": str(e)}, 500  # return raw data
+
+
+@app.route('/prioritization_strategies/<jobid>', methods=['GET'])
+def prioritization_strategies(jobid):
+    result, status_code = perform_prioritization_discovery(jobid)
+    if status_code == 200:
+        return jsonify(result)  # successful response
+    else:
+        return jsonify(result), status_code  # error response
+
+
+def case_attributes_discovery(jobid):
+    try:
+        # Fetch column_mapping first
+        job_url = f"http://154.56.63.127/jobs/{jobid}"
+        response = requests.get(job_url)
+        
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}", "status": 404}
+        
+        job_data = response.json()
+        column_mapping = job_data.get('column_mapping', {})
+
+        # Fetch the CSV
+        csv_url = f"http://154.56.63.127/assets/results/{jobid}/event_log.csv"
+        response = requests.get(csv_url)
+
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}", "status": 404}
+
+        # Load the CSV into a pandas DataFrame
+        csv_data = pd.read_csv(csv_url)
+        all_columns = csv_data.columns.tolist()
+
+        # Define the columns used in EventLogIDs
+        used_columns = [
+            column_mapping.get('case', 'case'),
+            column_mapping.get('activity', 'activity'),
+            column_mapping.get('start_timestamp', 'start_time'),
+            column_mapping.get('end_timestamp', 'end_time'),
+            column_mapping.get('resource', 'resource')
+        ]
+
+        # Filter out used columns to get remaining case attributes
+        remaining_columns = [col for col in all_columns if col not in used_columns]
+        if not remaining_columns:
+            return {"error": "No additional case attributes available", "status": 404}
+        
+        # Return the list of case attributes (remaining columns)
+        return {"data": remaining_columns, "status": 200}
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return {"error": str(e), "status": 404}
 
 @app.route('/overview/<jobid>', methods=['GET'])
 def overview(jobid):
