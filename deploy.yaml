@@ -58,6 +58,12 @@
         regexp: '^POSTGRES_PASSWORD='
         line: 'POSTGRES_PASSWORD={{ POSTGRES_PASSWORD }}'
 
+    - name: Ensure OPENAI_API_KEY is set in .env
+      ansible.builtin.lineinfile:
+        path: "{{ deployment_dir }}/.env"
+        regexp: '^OPENAI_API_KEY='
+        line: 'OPENAI_API_KEY={{ OPENAI_API_KEY }}'
+
     - name: Build the database-api Docker image
       community.docker.docker_compose:
         project_src: "{{ deployment_dir }}"

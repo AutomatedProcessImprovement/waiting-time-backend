@@ -14,6 +14,10 @@ from pix_framework.io.event_log import EventLogIDs, read_csv_log
 from pix_framework.enhancement.start_time_estimator.config import Configuration, ConcurrencyOracleType, ReEstimationMethod, ResourceAvailabilityType
 from pix_framework.enhancement.start_time_estimator.estimator import StartTimeEstimator
 from pix_framework.discovery.prioritization.discovery import discover_priority_rules
+from pix_framework.discovery.resource_calendar_and_performance.crisp.discovery import discover_crisp_resource_calendars_per_profile
+from pix_framework.discovery.resource_profiles import discover_differentiated_resource_profiles
+from pix_framework.discovery.resource_calendar_and_performance.calendar_discovery_parameters import CalendarDiscoveryParameters, CalendarType
+from pix_framework.discovery.resource_calendar_and_performance.crisp.resource_calendar import RCalendar
 
 
 # ALLOWED_ORIGINS = ["*"]
@@ -22,6 +26,7 @@ app = Flask(__name__)
 app.register_blueprint(chat_blueprint)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+base_url = "http://193.40.11.151"
 
 # resources = {
 #     r"/overview/*": {"origins": ALLOWED_ORIGINS},
@@ -99,7 +104,7 @@ def execute_sql_query(jobid, query):
 
     except Exception as e:
         print("Error executing query:", e)
-        raise
+        return str(e)
 
 
 @app.route('/execute_query/<jobid>', methods=['POST'])
@@ -118,10 +123,10 @@ def execute_query_endpoint(jobid):
         return jsonify({"error": str(e)}), 500
 
 
-def perform_batching_discovery(jobid):
+def perform_calendar_discovery(jobid):
     try:
         # Fetch column_mapping first
-        job_url = f"http://154.56.63.127/jobs/{jobid}"
+        job_url = f"{base_url}/jobs/{jobid}"
         response = requests.get(job_url)
         if response.status_code != 200:
             return {"error": f"Failed to retrieve job details for jobid {jobid}"}, 500
@@ -130,7 +135,79 @@ def perform_batching_discovery(jobid):
         column_mapping = job_data.get('column_mapping', {})
 
         # Fetch the CSV
-        csv_url = f"http://154.56.63.127/assets/results/{jobid}/event_log.csv"
+        csv_url = f"{base_url}/assets/results/{jobid}/event_log.csv"
+        response = requests.get(csv_url)
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}"}, 500
+
+        csv_data = response.content.decode('utf-8')
+        csv_file = "temporary.csv"
+        with open(csv_file, "w") as f:
+            f.write(csv_data)
+        # Process the CSV using column_mapping
+        event_log = read_csv_log(
+            log_path=csv_file,
+            log_ids=EventLogIDs(
+                case=column_mapping.get('case', 'case'),
+                activity=column_mapping.get('activity', 'activity'),
+                start_time=column_mapping.get('start_timestamp', 'start_time'),
+                end_time=column_mapping.get('end_timestamp', 'end_time'),
+                resource=column_mapping.get('resource', 'resource'),
+            ),
+            sort=False
+        )
+
+        log_ids=EventLogIDs(
+            case=column_mapping.get('case', 'case'),
+            activity=column_mapping.get('activity', 'activity'),
+            start_time=column_mapping.get('start_timestamp', 'start_time'),
+            end_time=column_mapping.get('end_timestamp', 'end_time'),
+            resource=column_mapping.get('resource', 'resource'),
+        )
+
+        every_resource_separated = discover_differentiated_resource_profiles(event_log, log_ids)
+        params = CalendarDiscoveryParameters(
+            discovery_type=CalendarType.DIFFERENTIATED_BY_RESOURCE,
+            granularity=60,
+            confidence=0.6,
+            support=0.2,
+            participation=0.4,
+        )
+
+        calendars = discover_crisp_resource_calendars_per_profile(event_log, log_ids, params, every_resource_separated)
+
+        serialized_calendars = [calendar.to_dict() for calendar in calendars]
+        
+        print(serialized_calendars)
+
+        # Assuming you're returning JSON response
+        return str(serialized_calendars), 200
+
+    except Exception as e:
+        logger.info(f"Error in resource calendars discovery: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.route('/calendars_discovery/<jobid>', methods=['GET'])
+def calendars_discovery(jobid):
+    result, status_code = perform_calendar_discovery(jobid)
+    if status_code == 200:
+        return (result)
+    else:
+        return (result), status_code
+
+def perform_batching_discovery(jobid):
+    try:
+        # Fetch column_mapping first
+        job_url = f"{base_url}/jobs/{jobid}"
+        response = requests.get(job_url)
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve job details for jobid {jobid}"}, 500
+        
+        job_data = response.json()
+        column_mapping = job_data.get('column_mapping', {})
+
+        # Fetch the CSV
+        csv_url = f"{base_url}/assets/results/{jobid}/event_log.csv"
         response = requests.get(csv_url)
         if response.status_code != 200:
             return {"error": f"Failed to retrieve CSV for jobid {jobid}"}, 500
@@ -196,7 +273,7 @@ def batching_strategies(jobid):
 def perform_prioritization_discovery(jobid):
     try:
         # Fetch column_mapping first
-        job_url = f"http://154.56.63.127/jobs/{jobid}"
+        job_url = f"{base_url}/jobs/{jobid}"
         response = requests.get(job_url)
         if response.status_code != 200:
             return {"error": f"Failed to retrieve job details for jobid {jobid}"}, 500
@@ -205,7 +282,7 @@ def perform_prioritization_discovery(jobid):
         column_mapping = job_data.get('column_mapping', {})
 
         # Fetch the CSV
-        csv_url = f"http://154.56.63.127/assets/results/{jobid}/event_log.csv"
+        csv_url = f"{base_url}/assets/results/{jobid}/event_log.csv"
         response = requests.get(csv_url)
         if response.status_code != 200:
             return {"error": f"Failed to retrieve CSV for jobid {jobid}"}, 500
@@ -244,12 +321,10 @@ def perform_prioritization_discovery(jobid):
             resource_availability_type=ResourceAvailabilityType.SIMPLE
         )
 
-        print("3")
 
         csv_data = pd.read_csv(csv_url)
         all_columns = csv_data.columns.tolist()
 
-        print("4")
 
         # Define the columns used in EventLogIDs
         used_columns = [
@@ -265,16 +340,16 @@ def perform_prioritization_discovery(jobid):
         if remaining_columns == []:
             return "No prioritization strategies discovered as no case attributes present in the event log", 200
         
-        print("5")
         extended_event_log = StartTimeEstimator(event_log, configuration).estimate()
-        print("6")
         prioritization_characteristics = discover_priority_rules(
             event_log=extended_event_log,
             attributes=remaining_columns
         )
 
-        # os.remove(csv_file)
-        print("Prioritization:", prioritization_characteristics)
+        empty_rules = any(rule.get('rules') == [[]] for rule in prioritization_characteristics)
+
+        if empty_rules:
+            return "No prioritization characteristics discovered", 200
         return prioritization_characteristics, 200  # return raw data
 
     except Exception as e:
@@ -294,7 +369,7 @@ def prioritization_strategies(jobid):
 def case_attributes_discovery(jobid):
     try:
         # Fetch column_mapping first
-        job_url = f"http://154.56.63.127/jobs/{jobid}"
+        job_url = f"{base_url}/jobs/{jobid}"
         response = requests.get(job_url)
         
         if response.status_code != 200:
@@ -304,7 +379,7 @@ def case_attributes_discovery(jobid):
         column_mapping = job_data.get('column_mapping', {})
 
         # Fetch the CSV
-        csv_url = f"http://154.56.63.127/assets/results/{jobid}/event_log.csv"
+        csv_url = f"{base_url}/assets/results/{jobid}/event_log.csv"
         response = requests.get(csv_url)
 
         if response.status_code != 200:

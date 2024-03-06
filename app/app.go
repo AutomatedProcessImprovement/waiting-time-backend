@@ -185,20 +185,20 @@ func (app *Application) processJob(job *model.Job) {
 		job.EventLogMD5, _ = md5sum(eventLogPath) // NOTE: we can ignore the error here
 
 		// if the log has been processed before, skip analysis and assign the result to the job
-		foundJob := app.queue.FindByMD5(job.EventLogMD5)
-		if foundJob != nil && foundJob.ID != job.ID &&
-			foundJob.Status != model.JobStatusPending &&
-			foundJob.Status != model.JobStatusFailed { // allow re-processing of failed jobs
-			app.logger.Printf("Job %s skipped; log has been processed before", job.ID)
-			job.SetStatus(model.JobStatusDuplicate)
-			job.SetResult(foundJob.Result)
-			job.SetReportCSV(foundJob.ReportCSV)
-			job.SetCompletedAt(time.Now())
-			if foundJob.Error != "" {
-				job.SetError(errors.New(foundJob.Error))
-			}
-			return
-		}
+		// foundJob := app.queue.FindByMD5(job.EventLogMD5)
+		// if foundJob != nil && foundJob.ID != job.ID &&
+		// 	foundJob.Status != model.JobStatusPending &&
+		// 	foundJob.Status != model.JobStatusFailed { // allow re-processing of failed jobs
+		// 	app.logger.Printf("Job %s skipped; log has been processed before", job.ID)
+		// 	job.SetStatus(model.JobStatusDuplicate)
+		// 	job.SetResult(foundJob.Result)
+		// 	job.SetReportCSV(foundJob.ReportCSV)
+		// 	job.SetCompletedAt(time.Now())
+		// 	if foundJob.Error != "" {
+		// 		job.SetError(errors.New(foundJob.Error))
+		// 	}
+		// 	return
+		// }
 	}
 
 	// work
