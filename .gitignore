@@ -22,3 +22,5 @@ assets/results
 
 .env
 *.gob
+
+database-api/*.log

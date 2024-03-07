@@ -3,17 +3,31 @@ import requests
 import os
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
+from chat import chat_blueprint
+import pandas as pd
 # from flask_cors import CORS
 import psycopg2
+import logging
 from psycopg2 import sql
 from pix_framework.discovery.batch_processing.batch_characteristics import discover_batch_processing_and_characteristics
 from pix_framework.io.event_log import EventLogIDs, read_csv_log
 from pix_framework.enhancement.start_time_estimator.config import Configuration, ConcurrencyOracleType, ReEstimationMethod, ResourceAvailabilityType
 from pix_framework.enhancement.start_time_estimator.estimator import StartTimeEstimator
+from pix_framework.discovery.prioritization.discovery import discover_priority_rules
+from pix_framework.discovery.resource_calendar_and_performance.crisp.discovery import discover_crisp_resource_calendars_per_profile
+from pix_framework.discovery.resource_profiles import discover_differentiated_resource_profiles
+from pix_framework.discovery.resource_calendar_and_performance.calendar_discovery_parameters import CalendarDiscoveryParameters, CalendarType
+from pix_framework.discovery.resource_calendar_and_performance.crisp.resource_calendar import RCalendar
+
 
 # ALLOWED_ORIGINS = ["*"]
 
 app = Flask(__name__)
+app.register_blueprint(chat_blueprint)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+base_url = "http://193.40.11.151"
+
 # resources = {
 #     r"/overview/*": {"origins": ALLOWED_ORIGINS},
 #     r"/case_overview/*": {"origins": ALLOWED_ORIGINS},
@@ -65,61 +79,84 @@ class DBHandler:
             return None
 
 
-@app.route('/batching_strategies/<jobid>', methods=['GET'])
-def batching_strategies(jobid):
-    # Fetch column_mapping first
-    job_url = f"http://154.56.63.127:8080/jobs/{jobid}"
-    response = requests.get(job_url)
-    
-    if response.status_code != 200:
-        return jsonify({"error": f"Failed to retrieve job details for jobid {jobid}"}), 500
-    
-    job_data = response.json()
-    column_mapping = job_data.get('column_mapping', {})
+def execute_sql_query(jobid, query):
+    sanitized_jobid = DBHandler.sanitize_table_name(jobid)
+    table_name = f"result_{sanitized_jobid}"
 
-    # Fetch the CSV
-    csv_url = f"http://154.56.63.127:8080/assets/results/{jobid}/event_log.csv"
-    response = requests.get(csv_url)
+    conn = DBHandler.get_db_connection()
+    if conn is None:
+        raise Exception("Could not connect to the database")
 
-    if response.status_code != 200:
-        return jsonify({"error": f"Failed to retrieve CSV for jobid {jobid}"}), 500
+    try:
+        cur = conn.cursor()
 
-    csv_data = response.content.decode('utf-8')
-    csv_file = "temporary.csv"
-    with open(csv_file, "w") as f:
-        f.write(csv_data)
+        # Execute the provided query
+        query_with_table = query.replace('{table_name}', table_name)
+        cur.execute(sql.SQL(query_with_table))
 
-    # Process the CSV using column_mapping
-    event_log = read_csv_log(
-        log_path=csv_file,
-        log_ids=EventLogIDs(
-            case=column_mapping.get('case', 'case'),
-            activity=column_mapping.get('activity', 'activity'),
-            start_time=column_mapping.get('start_timestamp', 'start_time'),
-            end_time=column_mapping.get('end_timestamp', 'end_time'),
-            resource=column_mapping.get('resource', 'resource'),
-        ),
-        sort=False
-    )
+        # Fetch the results
+        result = cur.fetchall()
 
-    configuration = Configuration(
-        log_ids=EventLogIDs(
-            case=column_mapping.get('case', 'case'),
-            activity=column_mapping.get('activity', 'activity'),
-            start_time=column_mapping.get('start_timestamp', 'start_time'),
-            end_time=column_mapping.get('end_timestamp', 'end_time'),
-            resource=column_mapping.get('resource', 'resource'),
-        ),
-        concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
-        re_estimation_method=ReEstimationMethod.MODE,
-        resource_availability_type=ResourceAvailabilityType.SIMPLE
-    )
+        cur.close()
+        conn.close()
 
-    print(configuration)
+        return result
 
-    extended_event_log = StartTimeEstimator(event_log, configuration).estimate()
-    batch_characteristics = discover_batch_processing_and_characteristics(
-        event_log=extended_event_log,
+    except Exception as e:
+        print("Error executing query:", e)
+        return str(e)
+
+
+@app.route('/execute_query/<jobid>', methods=['POST'])
+def execute_query_endpoint(jobid):
+    data = request.json
+    query = data.get('query')
+
+    if not query:
+        return jsonify({"error": "No query provided"}), 400
+
+    try:
+        result = execute_sql_query(jobid, query)
+        return jsonify({"result": result})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def perform_calendar_discovery(jobid):
+    try:
+        # Fetch column_mapping first
+        job_url = f"{base_url}/jobs/{jobid}"
+        response = requests.get(job_url)
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve job details for jobid {jobid}"}, 500
+        
+        job_data = response.json()
+        column_mapping = job_data.get('column_mapping', {})
+
+        # Fetch the CSV
+        csv_url = f"{base_url}/assets/results/{jobid}/event_log.csv"
+        response = requests.get(csv_url)
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}"}, 500
+
+        csv_data = response.content.decode('utf-8')
+        csv_file = "temporary.csv"
+        with open(csv_file, "w") as f:
+            f.write(csv_data)
+        # Process the CSV using column_mapping
+        event_log = read_csv_log(
+            log_path=csv_file,
+            log_ids=EventLogIDs(
+                case=column_mapping.get('case', 'case'),
+                activity=column_mapping.get('activity', 'activity'),
+                start_time=column_mapping.get('start_timestamp', 'start_time'),
+                end_time=column_mapping.get('end_timestamp', 'end_time'),
+                resource=column_mapping.get('resource', 'resource'),
+            ),
+            sort=False
+        )
+
         log_ids=EventLogIDs(
             case=column_mapping.get('case', 'case'),
             activity=column_mapping.get('activity', 'activity'),
@@ -127,12 +164,250 @@ def batching_strategies(jobid):
             end_time=column_mapping.get('end_timestamp', 'end_time'),
             resource=column_mapping.get('resource', 'resource'),
         )
-    )
 
-    # os.remove(csv_file)
+        every_resource_separated = discover_differentiated_resource_profiles(event_log, log_ids)
+        params = CalendarDiscoveryParameters(
+            discovery_type=CalendarType.DIFFERENTIATED_BY_RESOURCE,
+            granularity=60,
+            confidence=0.6,
+            support=0.2,
+            participation=0.4,
+        )
 
-    return jsonify(batch_characteristics)
+        calendars = discover_crisp_resource_calendars_per_profile(event_log, log_ids, params, every_resource_separated)
 
+        serialized_calendars = [calendar.to_dict() for calendar in calendars]
+        
+        print(serialized_calendars)
+
+        # Assuming you're returning JSON response
+        return str(serialized_calendars), 200
+
+    except Exception as e:
+        logger.info(f"Error in resource calendars discovery: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.route('/calendars_discovery/<jobid>', methods=['GET'])
+def calendars_discovery(jobid):
+    result, status_code = perform_calendar_discovery(jobid)
+    if status_code == 200:
+        return (result)
+    else:
+        return (result), status_code
+
+def perform_batching_discovery(jobid):
+    try:
+        # Fetch column_mapping first
+        job_url = f"{base_url}/jobs/{jobid}"
+        response = requests.get(job_url)
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve job details for jobid {jobid}"}, 500
+        
+        job_data = response.json()
+        column_mapping = job_data.get('column_mapping', {})
+
+        # Fetch the CSV
+        csv_url = f"{base_url}/assets/results/{jobid}/event_log.csv"
+        response = requests.get(csv_url)
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}"}, 500
+
+        csv_data = response.content.decode('utf-8')
+        csv_file = "temporary.csv"
+        with open(csv_file, "w") as f:
+            f.write(csv_data)
+        # Process the CSV using column_mapping
+        event_log = read_csv_log(
+            log_path=csv_file,
+            log_ids=EventLogIDs(
+                case=column_mapping.get('case', 'case'),
+                activity=column_mapping.get('activity', 'activity'),
+                start_time=column_mapping.get('start_timestamp', 'start_time'),
+                end_time=column_mapping.get('end_timestamp', 'end_time'),
+                resource=column_mapping.get('resource', 'resource'),
+            ),
+            sort=False
+        )
+
+        configuration = Configuration(
+            log_ids=EventLogIDs(
+                case=column_mapping.get('case', 'case'),
+                activity=column_mapping.get('activity', 'activity'),
+                start_time=column_mapping.get('start_timestamp', 'start_time'),
+                end_time=column_mapping.get('end_timestamp', 'end_time'),
+                resource=column_mapping.get('resource', 'resource'),
+            ),
+            concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
+            re_estimation_method=ReEstimationMethod.MODE,
+            resource_availability_type=ResourceAvailabilityType.SIMPLE
+        )
+
+        print(configuration)
+
+        extended_event_log = StartTimeEstimator(event_log, configuration).estimate()
+        batch_characteristics = discover_batch_processing_and_characteristics(
+            event_log=extended_event_log,
+            log_ids=EventLogIDs(
+                case=column_mapping.get('case', 'case'),
+                activity=column_mapping.get('activity', 'activity'),
+                start_time=column_mapping.get('start_timestamp', 'start_time'),
+                end_time=column_mapping.get('end_timestamp', 'end_time'),
+                resource=column_mapping.get('resource', 'resource'),
+            )
+        )
+        return batch_characteristics, 200
+
+    except Exception as e:
+        logger.info(f"Error in batching strategies: {str(e)}")
+        return {"error": str(e)}, 500
+
+@app.route('/batching_strategies/<jobid>', methods=['GET'])
+def batching_strategies(jobid):
+    result, status_code = perform_batching_discovery(jobid)
+    if status_code == 200:
+        return jsonify(result)
+    else:
+        return jsonify(result), status_code
+
+
+def perform_prioritization_discovery(jobid):
+    try:
+        # Fetch column_mapping first
+        job_url = f"{base_url}/jobs/{jobid}"
+        response = requests.get(job_url)
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve job details for jobid {jobid}"}, 500
+        
+        job_data = response.json()
+        column_mapping = job_data.get('column_mapping', {})
+
+        # Fetch the CSV
+        csv_url = f"{base_url}/assets/results/{jobid}/event_log.csv"
+        response = requests.get(csv_url)
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}"}, 500
+
+        csv_data = response.content.decode('utf-8')
+        csv_file = "temporary.csv"
+        with open(csv_file, "w") as f:
+            f.write(csv_data)
+
+        print("1")
+
+        # Process the CSV using column_mapping
+        event_log = read_csv_log(
+            log_path=csv_file,
+            log_ids=EventLogIDs(
+                case=column_mapping.get('case', 'case'),
+                activity=column_mapping.get('activity', 'activity'),
+                start_time=column_mapping.get('start_timestamp', 'start_time'),
+                end_time=column_mapping.get('end_timestamp', 'end_time'),
+                resource=column_mapping.get('resource', 'resource'),
+            ),
+            sort=False
+        )
+
+        print("2")
+        configuration = Configuration(
+            log_ids=EventLogIDs(
+                case=column_mapping.get('case', 'case'),
+                activity=column_mapping.get('activity', 'activity'),
+                start_time=column_mapping.get('start_timestamp', 'start_time'),
+                end_time=column_mapping.get('end_timestamp', 'end_time'),
+                resource=column_mapping.get('resource', 'resource'),
+            ),
+            concurrency_oracle_type=ConcurrencyOracleType.HEURISTICS,
+            re_estimation_method=ReEstimationMethod.MODE,
+            resource_availability_type=ResourceAvailabilityType.SIMPLE
+        )
+
+
+        csv_data = pd.read_csv(csv_url)
+        all_columns = csv_data.columns.tolist()
+
+
+        # Define the columns used in EventLogIDs
+        used_columns = [
+            column_mapping.get('case', 'case'),
+            column_mapping.get('activity', 'activity'),
+            column_mapping.get('start_timestamp', 'start_time'),
+            column_mapping.get('end_timestamp', 'end_time'),
+            column_mapping.get('resource', 'resource')
+        ]
+
+        # Filter out used columns
+        remaining_columns = [col for col in all_columns if col not in used_columns]
+        if remaining_columns == []:
+            return "No prioritization strategies discovered as no case attributes present in the event log", 200
+        
+        extended_event_log = StartTimeEstimator(event_log, configuration).estimate()
+        prioritization_characteristics = discover_priority_rules(
+            event_log=extended_event_log,
+            attributes=remaining_columns
+        )
+
+        empty_rules = any(rule.get('rules') == [[]] for rule in prioritization_characteristics)
+
+        if empty_rules:
+            return "No prioritization characteristics discovered", 200
+        return prioritization_characteristics, 200  # return raw data
+
+    except Exception as e:
+        logger.info(f"Error in prioritization strategies: {str(e)}")
+        return {"error": str(e)}, 500  # return raw data
+
+
+@app.route('/prioritization_strategies/<jobid>', methods=['GET'])
+def prioritization_strategies(jobid):
+    result, status_code = perform_prioritization_discovery(jobid)
+    if status_code == 200:
+        return jsonify(result)  # successful response
+    else:
+        return jsonify(result), status_code  # error response
+
+
+def case_attributes_discovery(jobid):
+    try:
+        # Fetch column_mapping first
+        job_url = f"{base_url}/jobs/{jobid}"
+        response = requests.get(job_url)
+        
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}", "status": 404}
+        
+        job_data = response.json()
+        column_mapping = job_data.get('column_mapping', {})
+
+        # Fetch the CSV
+        csv_url = f"{base_url}/assets/results/{jobid}/event_log.csv"
+        response = requests.get(csv_url)
+
+        if response.status_code != 200:
+            return {"error": f"Failed to retrieve CSV for jobid {jobid}", "status": 404}
+
+        # Load the CSV into a pandas DataFrame
+        csv_data = pd.read_csv(csv_url)
+        all_columns = csv_data.columns.tolist()
+
+        # Define the columns used in EventLogIDs
+        used_columns = [
+            column_mapping.get('case', 'case'),
+            column_mapping.get('activity', 'activity'),
+            column_mapping.get('start_timestamp', 'start_time'),
+            column_mapping.get('end_timestamp', 'end_time'),
+            column_mapping.get('resource', 'resource')
+        ]
+
+        # Filter out used columns to get remaining case attributes
+        remaining_columns = [col for col in all_columns if col not in used_columns]
+        if not remaining_columns:
+            return {"error": "No additional case attributes available", "status": 404}
+        
+        # Return the list of case attributes (remaining columns)
+        return {"data": remaining_columns, "status": 200}
+    
+    except Exception as e:
+        return {"error": str(e), "status": 404}
 
 @app.route('/overview/<jobid>', methods=['GET'])
 def overview(jobid):
@@ -1106,7 +1381,7 @@ def activity_transitions_average_case(jobid):
                 SELECT
                     sourceactivity,
                     destinationactivity,
-                    case_id,
+                    caseid,
                     AVG(wttotal) as avg_total_wt_case,
                     AVG(wtcontention) as avg_contention_wt_case,
                     AVG(wtbatching) as avg_batching_wt_case,
@@ -1114,7 +1389,7 @@ def activity_transitions_average_case(jobid):
                     AVG(wtunavailability) as avg_unavailability_wt_case,
                     AVG(wtextraneous) as avg_extraneous_wt_case
                 FROM {}
-                GROUP BY sourceactivity, destinationactivity, case_id
+                GROUP BY sourceactivity, destinationactivity, caseid
             )
             SELECT
                 sourceactivity,
