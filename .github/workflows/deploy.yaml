@@ -38,7 +38,6 @@ jobs:
           -e "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" \
           -e "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" \
           -e "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}"
-        continue-on-error: true
 
       - name: Collect logs if deployment fails
         if: failure()
